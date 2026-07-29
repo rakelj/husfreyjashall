@@ -1,0 +1,2423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>The Hall — v6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,500;1,300&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+ /* smoke-blackened timber, carved bone, and one lamp */
+ --ink:#15110d;      /* soot — the roof above you            */
+ --p1:#1e1813;       /* timber — a plank                     */
+ --p2:#282019;       /* grain — a plank you can press        */
+ --line:#0c0a07;     /* the groove cut between them          */
+ --edge:#3a2f24;     /* the lit upper edge of a cut          */
+ --bone:#e9dcc0;     /* antler, incised                      */
+ --dim:#93866f;      /* ash                                  */
+ --patina:#7f9d73;   /* aged bronze                          */
+ --rust:#b05a34;     /* iron oxide                           */
+ --frost:#7290a6;    /* woad-dyed cloth                      */
+ --gold:#e0a53c;     /* tallow flame                         */
+ --amber:#d8a24a;
+ --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+ --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* Safari on iOS will not deliver a click from a plain div unless it looks
+   clickable to it. Every tap target says so explicitly. */
+[data-slot],[data-sect],[data-flow],[data-un],[data-act],[data-pick]{
+ cursor:pointer;touch-action:manipulation}
+html,body{margin:0;padding:0;overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%}
+body{background:var(--ink);color:var(--bone);font-family:var(--serif);font-size:14.5px;line-height:1.45;
+ -webkit-font-smoothing:antialiased;
+ background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px),
+  repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 2px,transparent 2px 9px)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+h2{font-family:var(--serif);font-weight:600;font-size:15px;margin:0 0 9px;
+ font-variant:small-caps;letter-spacing:.07em;color:var(--bone)}
+/* pressed into the wood rather than laid on it */
+button{font-family:var(--serif);font-size:13px;font-variant:small-caps;letter-spacing:.06em;
+ background:var(--p2);color:var(--bone);border:0;border-top:1px solid var(--edge);
+ box-shadow:inset 0 1px 0 rgba(0,0,0,.5),inset 0 -1px 0 rgba(0,0,0,.35);
+ padding:9px 14px;border-radius:0;min-height:46px;touch-action:manipulation;
+ -webkit-user-select:none;user-select:none;cursor:pointer}
+button:active:not(:disabled){background:var(--gold);color:#15110d;border-top-color:var(--gold)}
+button:disabled{opacity:.32}
+button > *{pointer-events:none}
+.pick{position:relative;min-height:66px}
+.pick:active{transform:scale(.985)}
+button.take{background:var(--patina);border-top-color:#9ab88e;color:#15110d;font-weight:600}
+button.take:active:not(:disabled){background:#9ab88e;color:#15110d}
+button.swap{background:transparent;box-shadow:none;border-top:1px dashed var(--edge);color:var(--dim)}
+.q.ready{border-left-color:var(--patina)}
+.give{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:62%}
+.give button{min-height:46px;padding:8px 14px}
+.row{min-height:8px}
+.row > button, .row > span > button{margin-left:4px}
+.q .row{gap:12px}
+@media (pointer:coarse){ button{min-height:46px} .slot{min-height:52px;padding:9px 10px} }
+
+/* fixed top: always visible */
+#top{position:sticky;top:0;z-index:20;background:#120e0a;border-bottom:2px solid var(--line);box-shadow:0 1px 0 var(--edge);
+ padding:8px 12px calc(8px + env(safe-area-inset-top,0px));padding-top:8px}
+#res{display:flex;flex-wrap:wrap;gap:3px 13px;font-family:var(--mono);font-size:12px;line-height:1.55}
+#res .it{white-space:nowrap}
+#res .it.up b{color:var(--patina)}
+#res .it.dn b{color:var(--rust)}
+#res .it.full{border-bottom:1px solid var(--gold)}
+#res .ar{font-size:9px;opacity:.85}
+#res .st{color:var(--dim);flex-basis:100%;font-size:10.5px}
+#res::-webkit-scrollbar{display:none}
+#res b{color:var(--dim);font-weight:400}
+#res .it{white-space:nowrap}
+#res .it.up b{color:var(--patina)}
+#res .it.dn b{color:var(--rust)}
+#res .it.full{border-bottom:1px solid var(--gold)}
+#res .ar{font-size:9px;opacity:.85}
+#res .it.up{color:var(--patina)}
+#tabs{display:flex;gap:4px;margin-top:7px}
+#tabs button{flex:1;padding:8px 1px;font-size:11.5px;min-height:48px;letter-spacing:.03em}
+#tabs button.on{background:var(--gold);color:#15110d;border-top-color:#f0bd5e;font-weight:600}
+#tabs button .dot{display:inline-block;width:6px;height:6px;border-radius:0;transform:rotate(45deg);background:var(--gold);vertical-align:middle;margin-left:3px}
+main{padding:12px 12px 60px;max-width:640px;margin:0 auto}
+/* a plank, with the groove cut above it and the lamplight on its upper edge */
+.card{background:var(--p1);border:0;border-top:1px solid var(--edge);border-radius:0;
+ padding:12px 13px 13px;margin-bottom:10px;box-shadow:0 -2px 0 var(--line),0 2px 5px rgba(0,0,0,.4)}
+.card.act{border-top-color:var(--gold);box-shadow:0 -2px 0 var(--line),0 0 0 1px rgba(224,165,60,.18)}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hd[data-sect]{min-height:44px;align-items:center;margin:-4px -2px 0;padding:0 2px}
+.hd[data-sect]:active{opacity:.6}
+.hd .nm{font-size:14.5px;font-weight:600;font-variant:small-caps;letter-spacing:.06em}
+.hd .lv{font-family:var(--mono);font-size:11.5px;color:var(--gold)}
+.sub{font-size:11.5px;color:var(--dim);font-family:var(--mono);margin-top:2px;line-height:1.4}
+.bar{height:11px;background:#0f0c09;border-radius:0;overflow:hidden;margin-top:9px;position:relative;
+ box-shadow:inset 0 1px 2px rgba(0,0,0,.7),0 1px 0 var(--edge)}
+.bar i{display:block;height:100%;min-width:3px;background:linear-gradient(90deg,#5c7688,#9fb9c9);transition:width .09s linear;border-radius:0}
+.bar.xp i{background:linear-gradient(90deg,#a8762a,#e0a53c)}
+.bar.sm{height:7px;margin-top:5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.pick{padding:9px 10px;text-align:left;line-height:1.25;min-height:52px}
+.pick b{display:block;font-family:var(--serif);font-size:13.5px;font-weight:600;font-variant:small-caps;letter-spacing:.05em}
+.pick small{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.pick.on{background:var(--gold);color:#15110d;border-top-color:#f0bd5e}
+.pick.on small{color:#3a2c12}
+.pick.want small{color:var(--rust)}
+.pick .who{display:block;font-family:var(--mono);font-size:9.5px;color:var(--patina);margin-top:2px}
+.pick .who.idle{color:var(--rust)}
+.pick.on .who{color:#3a2c12}
+.row{display:flex;justify-content:space-between;gap:9px;align-items:center;padding:3px 0;font-size:13px}
+.note{font-size:12.5px;color:var(--dim);font-family:var(--serif);font-style:italic;line-height:1.45}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+.slot{border:1px dashed var(--edge);border-radius:0;padding:7px 9px;font-size:11.5px;font-family:var(--mono);color:var(--dim);min-height:46px;background:rgba(0,0,0,.18)}
+.slot.f{border-style:solid;border-color:var(--gold);color:var(--bone);background:rgba(224,165,60,.07)}
+.slot em{display:block;font-style:normal;color:var(--dim);font-size:9.5px;text-transform:uppercase;letter-spacing:.09em}
+.q{border-left:2px solid var(--gold);padding:6px 0 6px 9px;margin-bottom:7px}
+.q.done{border-left-color:var(--patina);opacity:.5}
+.q .t{font-size:13px} .q .r{font-size:10.5px;color:var(--gold);font-family:var(--mono)}
+.q .p{font-size:10.5px;color:var(--dim);font-family:var(--mono)}
+.tag{display:inline-block;font-size:9.5px;font-family:var(--mono);padding:2px 6px;border:1px solid var(--edge);border-radius:0;color:var(--dim);margin-right:4px}
+.tag.amber{border-color:var(--amber);color:var(--amber)}
+#log{max-height:220px;overflow-y:auto;font-family:var(--serif);font-size:13px;line-height:1.5}
+#log div{padding:3px 0;border-bottom:1px solid rgba(58,47,36,.5)}
+#log .g{color:var(--patina)} #log .b{color:var(--frost)} #log .y{color:var(--gold)}
+#away{position:fixed;inset:0;z-index:60;background:rgba(10,14,19,.86);display:flex;align-items:center;
+ justify-content:center;padding:18px}
+#away .in{background:var(--p1);border:0;border-top:2px solid var(--gold);border-radius:0;padding:17px 16px 15px;box-shadow:0 6px 24px rgba(0,0,0,.7);
+ max-width:460px;width:100%;max-height:82vh;overflow-y:auto}
+#away h2{font-size:17px;margin-bottom:4px}
+#away .li{padding:6px 0;border-bottom:1px solid #232c36;font-size:13px}
+#away .li:last-of-type{border-bottom:0}
+#away .li b{font-family:var(--mono);font-weight:500;color:var(--bone)}
+#intro{position:fixed;inset:0;z-index:70;background:#120e0a;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+#intro .in{max-width:430px;width:100%}
+#intro pre{font-family:var(--mono);font-size:11px;line-height:1.15;color:var(--edge);margin:0 0 4px;text-align:center;white-space:pre}
+#intro pre .f{color:var(--gold)}
+#intro h1{font-family:var(--serif);font-variant:small-caps;letter-spacing:.14em;font-size:21px;font-weight:600;
+ text-align:center;margin:14px 0 2px;color:var(--bone)}
+#intro .rule{height:1px;background:var(--edge);margin:12px 0 14px}
+#intro p{font-family:var(--serif);font-size:14.5px;line-height:1.6;margin:0 0 11px;color:var(--bone)}
+#intro p.q{color:var(--dim);font-style:italic}
+#toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--gold);color:#15110d;
+ padding:9px 16px;border-radius:0;font-family:var(--serif);font-variant:small-caps;letter-spacing:.06em;
+ font-size:13.5px;font-weight:600;z-index:50;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;
+ box-shadow:0 2px 10px rgba(0,0,0,.6)}
+#toast.s{opacity:1}
+</style>
+</head>
+<body>
+<div id="top">
+  <div id="res"></div>
+  <div id="tabs">
+    <button data-t="work" id="tw" class="on">Work</button><button data-t="crew" id="tc">Crew</button>
+    <button data-t="craft" id="tf">Craft</button><button data-t="sea" id="ts">Sea</button>
+    <button data-t="lore" id="tl">Lore</button><button data-t="quest" id="tq">Tasks</button><button data-t="hall" id="th">Hall</button>
+  </div>
+</div>
+<main id="view"></main>
+<div id="toast"></div>
+<div id="intro" style="display:none"></div>
+<div id="away" style="display:none"></div>
+<script>
+
+"use strict";
+
+/* ═════════════════════════════════════════════════════════════
+   §1  CONTENT
+   Everything here is data. Change these to change the game;
+   no rule below reads a number that is not declared in this section.
+   ═════════════════════════════════════════════════════════════ */
+
+/* ---------------- data ---------------- */
+/* raw, then processed, then product — the order the chain runs, and the order
+   every list in the game shows them in */
+const SK={forage:"Foraging",fish:"Fishing",wood:"Woodcraft",mine:"Mining",herd:"Husbandry",
+ smith:"Smithing",weave:"Weaving",keep:"Preserving",
+ cook:"Cooking",sail:"Sailmaking",ship:"Shipwright"};
+const TIERS=[["Raw","forage fish wood mine herd"],["Processed","smith weave keep"],["Product","cook sail ship"]]
+ .map(([t,k])=>({t,ks:k.split(" ")}));
+/* raw · processed · product, in the order the chain runs */
+const RES=["food","herbs","kelp","fish","timber","bark","ore","clay","wool","horn",
+ "salt","charcoal","iron","yarn","cloth","stores","meals","sailcloth","hull","silver"];
+const COMP=["amber","ivory","whetstone","glass","silk"];
+const RARITY=["silk","glass","ivory","whetstone","amber"];
+const CN={kelp:"Kelp",fish:"Fish",bark:"Bark",clay:"Clay",horn:"Horn",salt:"Salt",
+ charcoal:"Charcoal",yarn:"Yarn",sailcloth:"Sailcloth",amber:"Amber",ivory:"Walrus ivory",whetstone:"Eidsborg hone",glass:"Frankish glass",silk:"Eastern silk"};
+/* every action is a real-time cycle in seconds */
+/* Every craft has more than one thing it can do. The choice is usually a trade:
+   a steadier rate against a byproduct you cannot get any other way. */
+/* Every craft has more than one thing it can do, and a processor eats faster than
+   one gatherer can feed it. Two at the bog to keep one bloom lit — that ratio is the
+   shape of the hall. */
+const ACT={
+ // ── raw ──
+ shore:{en:"Walk the shore", sk:"forage",out:{food:1.6,kelp:1.0},secs:4.0,xp:9},
+ woods:{en:"Walk the woods", sk:"forage",out:{food:2.4},  secs:4.4,xp:9,  rare:{herbs:0.22}},
+ net:  {en:"Set nets",       sk:"fish",  out:{fish:2.4},  secs:5.5,xp:12},
+ deep: {en:"Fish the deeps", sk:"fish",  out:{fish:3.0},  secs:7.5,xp:16, rare:{ivory:0.030}},
+ hew:  {en:"Hew the coppice",sk:"wood",  out:{timber:2.4},secs:4.5,xp:8},
+ fell: {en:"Fell old timber",sk:"wood",  out:{timber:3.2},secs:6.5,xp:12, rare:{bark:0.18}},
+ bog:  {en:"Dig the bog",    sk:"mine",  out:{ore:2.0},   secs:5.5,xp:12},
+ scree:{en:"Work the scree", sk:"mine",  out:{ore:1.5},   secs:6.0,xp:13, rare:{clay:0.20}},
+ tend: {en:"Shear the flock",sk:"herd",  out:{wool:1.6},  secs:5.5,xp:13},
+ herd: {en:"Tend the flock", sk:"herd",  out:{wool:1.1},  secs:6.0,xp:14, rare:{horn:0.18}},
+ // ── processed: each eats faster than one pair of hands can gather ──
+ kiln: {en:"Burn charcoal",  sk:"smith", out:{charcoal:1.6},use:{timber:4.5},secs:5.5,xp:15},
+ bloom:{en:"Work the bloom", sk:"smith", out:{iron:1.2},  use:{ore:4.2,charcoal:1.0},secs:6.5,xp:18},
+ spin: {en:"Spin yarn",      sk:"weave", out:{yarn:1.7},  use:{wool:2.6},secs:5.0,xp:14},
+ loom: {en:"Work the loom",  sk:"weave", out:{cloth:1.0}, use:{yarn:2.8},secs:6.5,xp:19},
+ burn: {en:"Burn kelp",      sk:"keep",  out:{salt:1.3},  use:{kelp:2.2},secs:5.0,xp:13},
+ smoke:{en:"Salt the fish",  sk:"keep",  out:{stores:1.7},use:{fish:4.0,salt:0.6},secs:5.5,xp:16},
+ // ── product ──
+ rivet:{en:"Rivet a strake", sk:"ship",  out:{hull:1.0},  use:{timber:5,iron:1.2},secs:8.0,xp:24},
+ cook: {en:"Cook a pot",     sk:"cook",  out:{meals:1},   use:{food:9,herbs:1.2},secs:7.0,xp:22},
+ sew:  {en:"Sew a sail",     sk:"sail",  out:{sailcloth:1},use:{cloth:2.5,yarn:1.5},secs:9.0,xp:28}
+};
+
+
+const SLOTS={tool:"Tool",garment:"Garment",rune:"Rune-stick",amulet:"Amulet"};
+/* recipes — discovered, never all visible at once */
+/* Gear. Every craft has a tool line of two tiers; the second cannot be learned
+   until the first is, and costs far more of its base material. */
+const REC=[
+ // — tools, tier one: learned by getting good at the work itself —
+ {id:"axe0",  en:"Bound axe",     slot:"tool",sk:"wood",  make:"smith",lv:3, cost:{iron:10},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"wood",lv:4}},
+ {id:"net0",  en:"Bast net",      slot:"tool",sk:"fish",  make:"weave",lv:3, cost:{cloth:8},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"fish",lv:4}},
+ {id:"pick0", en:"Antler pick",   slot:"tool",sk:"mine",  make:"smith",lv:3, cost:{iron:11},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"mine",lv:4}},
+ {id:"bask0", en:"Bark basket",   slot:"tool",sk:"forage",make:"wood", lv:5, cost:{timber:26},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"forage",lv:10}},
+ {id:"comb0", en:"Horn comb",     slot:"tool",sk:"herd",  make:"wood", lv:6, cost:{timber:30},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"herd",lv:10}},
+ {id:"tong0", en:"Bone tongs",    slot:"tool",sk:"smith", make:"smith",lv:6, cost:{iron:16},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"smith",lv:10}},
+ {id:"weig0", en:"Clay weights",  slot:"tool",sk:"weave", make:"weave",lv:6, cost:{cloth:12}, comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"weave",lv:10}},
+ {id:"rack0", en:"Smoke-rack",    slot:"tool",sk:"keep",  make:"wood", lv:6, cost:{timber:34},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"keep",lv:10}},
+ {id:"pot0",  en:"Soapstone pot", slot:"tool",sk:"cook",  make:"smith",lv:6, cost:{iron:15},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"cook",lv:10}},
+ {id:"caul0", en:"Caulking iron", slot:"tool",sk:"ship",  make:"smith",lv:6, cost:{iron:18},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"ship",lv:10}},
+ // — tools, tier two: far dearer, and only after the first —
+ {id:"axe",   en:"Broad axe",     slot:"tool",sk:"wood",  make:"smith",lv:8, cost:{iron:60},  comp:{whetstone:1}, bonus:{speed:.30,yield:.18},  pre:"axe0"},
+ {id:"spear", en:"Fish spear",    slot:"tool",sk:"fish",  make:"smith",lv:8, cost:{iron:55},  comp:{ivory:1},     bonus:{speed:.30,yield:.18},  pre:"net0"},
+ {id:"spade", en:"Bog spade",     slot:"tool",sk:"mine",  make:"smith",lv:9, cost:{iron:65},  comp:{whetstone:1}, bonus:{speed:.30,yield:.18},  pre:"pick0"},
+ {id:"bask",  en:"Berry comb",    slot:"tool",sk:"forage",make:"wood", lv:10,cost:{timber:150,cloth:20},comp:{amber:1},bonus:{speed:.30,yield:.18},pre:"bask0"},
+ {id:"shears",en:"Iron shears",   slot:"tool",sk:"herd",  make:"smith",lv:9, cost:{iron:58},  comp:{whetstone:1}, bonus:{speed:.30,yield:.18},  pre:"comb0"},
+ {id:"tongs", en:"Smith's tongs", slot:"tool",sk:"smith", make:"smith",lv:12,cost:{iron:90},  comp:{glass:1},     bonus:{speed:.32,yield:.20}, pre:"tong0"},
+ {id:"loomw", en:"Warp-weights",  slot:"tool",sk:"weave", make:"weave",lv:11,cost:{cloth:55}, comp:{amber:1},     bonus:{speed:.28,yield:.22}, pre:"weig0"},
+ {id:"pans",  en:"Salt pans",     slot:"tool",sk:"keep",  make:"smith",lv:10,cost:{iron:70},  comp:{glass:1},     bonus:{speed:.30,yield:.18},  pre:"rack0"},
+ {id:"pot",   en:"Iron cauldron", slot:"tool",sk:"cook",  make:"smith",lv:10,cost:{iron:75},  comp:{glass:1}, bonus:{speed:.30,yield:.18}, learn:{sk:"cook",lv:20}, pre:"pot0"},
+ {id:"rivet", en:"Rivet-set",     slot:"tool",sk:"ship",  make:"smith",lv:12,cost:{iron:110}, comp:{whetstone:2}, bonus:{speed:.30,yield:.20},  pre:"caul0"},
+ // — the other three slots, each its own line —
+ {id:"wrap0", en:"Plain wrap",    slot:"garment",        make:"weave",lv:3, cost:{cloth:12}, comp:{}, bonus:{all:.04}, learn:{sk:"weave",lv:6}},
+ {id:"cloak", en:"Wool cloak",    slot:"garment",        make:"weave",lv:7, cost:{cloth:45}, comp:{amber:1}, bonus:{all:.09}, pre:"wrap0"},
+ {id:"kyrtl", en:"Fur kyrtill",   slot:"garment",        make:"weave",lv:12,cost:{cloth:120},comp:{ivory:2}, bonus:{all:.16}, pre:"cloak"},
+ {id:"stick0",en:"Notched stick", slot:"rune",           make:"wood", lv:4, cost:{timber:28},comp:{}, bonus:{xp:.12}, learn:{sk:"wood",lv:6}},
+ {id:"tally", en:"Tally stick",   slot:"rune",           make:"wood", lv:8, cost:{timber:110},comp:{glass:1}, bonus:{xp:.26}, pre:"stick0"},
+ {id:"kefli", en:"Carved kefli",  slot:"rune",           make:"wood", lv:14,cost:{timber:280},comp:{silk:1},  bonus:{xp:.46}, pre:"tally"},
+ {id:"bead",  en:"Amber bead",    slot:"amulet",         make:"weave",lv:5, cost:{},         comp:{amber:2}, bonus:{luck:.18}, learn:{sk:"weave",lv:10}},
+ {id:"hammer",en:"Thor's hammer", slot:"amulet",         make:"smith",lv:12,cost:{iron:80},  comp:{silk:1},  bonus:{luck:.34,all:.05}, pre:"bead"}
+];
+/* Lore — the slow parallel track. Runs on its own clock while you work. */
+/* Lore — lines of five tiers rather than one-shot projects. Cost and time climb,
+   the effect stacks, and higher lines want you to have read a little first. */
+const RSCH=[
+ {id:"bellows",br:"Forge lore",en:"Deep bellows",   tiers:5,rank:0, silver:70,  mins:2.0, step:0.06,eff:t=>`Smithing, weaving, salting and hull-work +${Math.round(t*6)}%`},
+ {id:"coal",   br:"Forge lore",en:"Charcoal burning",tiers:5,rank:0,silver:60,  mins:1.8, step:0.07,eff:t=>`Every craft spends ${Math.round(t*7)}% less on its inputs`},
+ {id:"weld",   br:"Forge lore",en:"Pattern welding",tiers:5,rank:3, silver:150, mins:3.0, step:0.15,eff:t=>`Gear works ${Math.round(t*15)}% harder`,comp:"whetstone"},
+ {id:"tar",    br:"Sea lore",  en:"Tarring",        tiers:5,rank:2, silver:80,  mins:2.0, step:0.10,eff:t=>`She wears ${Math.round(t*10)}% slower`},
+ {id:"sun",    br:"Sea lore",  en:"The sun-stone",  tiers:5,rank:4, silver:170, mins:3.0, step:0.08,eff:t=>`Voyages take ${Math.round(t*8)}% less time`,comp:"amber"},
+ {id:"star",   br:"Sea lore",  en:"Star reckoning", tiers:5,rank:6, silver:240, mins:4.0, step:0.20,eff:t=>`Rare things come ${Math.round(t*20)}% more often`,comp:"ivory"},
+ {id:"keel",   br:"Sea lore",  en:"A deeper keel",  tiers:5,rank:9, silver:380, mins:5.0, step:0.15,eff:t=>`Voyages bring ${Math.round(t*15)}% more silver`,comp:"silk"},
+ {id:"fire",   br:"Hall lore", en:"The long fire",  tiers:5,rank:0, silver:90,  mins:2.2, step:0.25,eff:t=>`Your people teach you ${Math.round(t*25)}% faster`},
+ {id:"elder",  br:"Hall lore", en:"Elder counsel", tiers:5,rank:2, silver:140, mins:2.6, step:5, eff:t=>`You may learn ${t*5} levels beyond what the hall allows`},
+ {id:"eaves",  br:"Hall lore", en:"Wide eaves",     tiers:5,rank:0, silver:100, mins:2.0, step:0.35,eff:t=>`Every store holds ${Math.round(t*35)}% more`},
+ {id:"guest",  br:"Hall lore", en:"Guest-right",    tiers:5,rank:5, silver:200, mins:3.5, step:0.08,eff:t=>`Folk cost ${Math.round(t*8)}% less and come sooner`},
+ {id:"tally",  br:"Hall lore", en:"The ancestor tally",tiers:5,rank:7,silver:320,mins:4.5,step:0.08,eff:t=>`You and yours learn ${Math.round(t*8)}% faster`,comp:"glass"},
+ {id:"thing",  br:"Hall lore", en:"The thing-place",tiers:2,rank:8, silver:520, mins:6.0, step:1,   eff:t=>`${t} more stud${t>1?"ies":"y"} at once`,comp:"amber"}
+];
+const HALL=[null,
+ {crew:1,capx:1,  cost:null},
+ {crew:2,capx:2,   cost:{timber:80,food:60,silver:120},                   need:{sk:[2,4]}},
+ {crew:3,capx:3.5, cost:{timber:260,iron:40,stores:60,silver:450},        need:{sk:[3,6]}},
+ {crew:4,capx:6,   cost:{timber:620,cloth:70,iron:120,silver:1400},       need:{sk:[4,9]}},
+ {crew:5,capx:10,  cost:{timber:1400,iron:320,cloth:180,silver:3800},     need:{sk:[5,12]}},
+ {crew:6,capx:18,  cost:{timber:3200,cloth:420,iron:600,silver:9000},     need:{sk:[6,16]}},
+ {crew:7,capx:32,  cost:{timber:7000,iron:1400,cloth:900,silver:20000},   need:{sk:[7,22]}},
+ {crew:8,capx:58,  cost:{timber:14000,cloth:2200,iron:3000,silver:44000}, need:{sk:[8,30]}},
+ {crew:9,capx:105, cost:{timber:26000,iron:6500,cloth:4800,silver:95000}, need:{sk:[9,40]}},
+ {crew:9,capx:190, cost:{timber:48000,cloth:11000,iron:14000,sailcloth:900,silver:200000},need:{sk:[10,52]}}
+];
+/* The men are gone — that is the premise, so the roster is women. */
+const NAMES=["Ásta","Gyða","Sigríðr","Álfdís","Ragnhildr","Yrsa","Bergljót","Þórunn",
+ "Hallgerðr","Auðr","Gunnhildr","Þórdís","Ingiríðr","Steinvǫr","Jórunn","Vigdís","Þórhildr","Herborg"];
+/* Voyages are at prototype speed. In the finished game the longest run is meant to
+   be about eight hours, which is this set of times x48 — change the one number. */
+const VOY_SCALE=16;
+/* A hall does not crew a ship. You fit one out and take a félag — a partnership —
+   with people who sail for a share of what comes home, not for wages. */
+const PORTS=[
+ {id:"coast", en:"Coastal run",  mins:1.5,share:0.18,fit:10,stores:12,wear:11, silver:[54,102], comp:{amber:.55,whetstone:.35}, need:20},
+ {id:"isles", en:"The isles",    mins:3,  share:0.24,fit:25,stores:28,wear:22,silver:[135,240], comp:{ivory:.5,amber:.5,whetstone:.4}, need:45},
+ {id:"west",  en:"West over sea",mins:6,  share:0.3,fit:60,stores:60,wear:38,silver:[330,570],comp:{glass:.5,ivory:.55,whetstone:.4},need:90},
+ {id:"east",  en:"The east way", mins:10, share:0.36,fit:120,stores:110,wear:58,silver:[690,1140],comp:{silk:.5,glass:.5,amber:.6}, need:150}
+];
+/* staged opening — the tutorial IS the game */
+/* The way on — a numbered road through the first hour. Each step is taken, not given. */
+/* The way on. Not a tutorial that stops, but a spine that runs the whole length of
+   the hall — the first steps teach, the last ones are the work of several ages. */
+const INTRO=[
+ {t:"Walk the woods twenty times", val:s=>(s.did&&s.did.woods)||0, n:20, r:{food:50,silver:40},
+  say:"Everyone in the hall eats, and the food comes from somewhere. Ásta waits at the gate — twenty-five silver, and she gathers for you always."},
+ {t:"Take Ásta on",               val:s=>s.crew.length, n:1, r:{silver:25,food:40}, un:["shore","net","bog"],
+  say:"A gatherer first, always. With her feeding the hall your own hands are free."},
+ {t:"Reach Foraging 3",           val:s=>myL(s,"forage"), n:3, r:{silver:70},
+  un:["tend","herd","cook","burn","smoke","kiln","bloom","spin","loom","fell","deep","scree"],
+  say:"Flock, pot, salt, iron and cloth are yours to work."},
+ {t:"Hew twenty timber",          val:s=>s.tot.timber, n:20, r:{silver:60},
+  say:"Woodcraft. Timber for the hall, the kiln and the keel."},
+ {t:"Take your first mark",       val:s=>Object.values(s.marks||{}).reduce((a,b)=>a+b,0), n:1, r:{silver:100},
+  say:"Marks run deeper than one age. They are the long road."},
+ {t:"Read your first tier of lore",val:s=>loreRank(s), n:1, r:{silver:130},
+  say:"What is read once holds for the whole age."},
+ {t:"Raise the hall to two",      val:s=>s.hall, n:2, r:{timber:120,food:80}, un:["rivet","sew"],
+  say:"Room for a second pair of hands, and you may lay a keel."},
+
+ /* — every craft, once, in the order the chain runs — */
+ {t:"Turn up ten herbs",          val:s=>s.tot.herbs, n:10, r:{food:120},
+  say:"The woods give herbs, and nothing else in the hall will find them."},
+ {t:"Gather fifteen kelp on the shore",val:s=>s.tot.kelp, n:15, r:{silver:80},
+  say:"The shore gives less food than the woods, but kelp burns to salt — and salt is the only way fish keeps."},
+ {t:"Cook five pots",              val:s=>s.tot.meals, n:5, r:{silver:110},
+  say:"Cooking. Food that keeps, and food that lifts a whole hall."},
+ {t:"Set the table",               val:s=>s.ev.tables||0, n:1, r:{silver:170},
+  say:"One pot for every mouth, and every hand works the harder for it."},
+ {t:"Set the nets twenty times",   val:s=>(s.did&&s.did.net)||0, n:20, r:{silver:120},
+  say:"Fishing. Fish are not food — they must be salted before they keep."},
+ {t:"Fish the deeps ten times",    val:s=>(s.did&&s.did.deep)||0, n:10, r:{silver:150},
+  say:"Slower going, but walrus come up out of the deep water."},
+ {t:"Burn ten salt",               val:s=>s.tot.salt, n:10, r:{silver:120},
+  say:"Preserving has two hands to it — the kelp fire, and the salting bench."},
+ {t:"Put up thirty winter stores", val:s=>s.tot.stores, n:30, r:{silver:140},
+  say:"Fish and salt together. Stores feed a voyage where fresh food will not."},
+ {t:"Shear forty wool",            val:s=>s.tot.wool, n:40, r:{silver:130},
+  say:"Husbandry. The flock is where all cloth begins."},
+ {t:"Spin thirty yarn",            val:s=>s.tot.yarn, n:30, r:{silver:110},
+  say:"Weaving begins at the spindle. Yarn before cloth, always."},
+ {t:"Weave fifteen cloth",         val:s=>s.tot.cloth, n:15, r:{silver:160},
+  say:"Cloth for what you wear, and for the sail that carries you."},
+ {t:"Dig fifty bog iron",          val:s=>s.tot.ore, n:50, r:{silver:130},
+  say:"Mining. Ore out of the bog, and nowhere else."},
+ {t:"Burn twenty charcoal",        val:s=>s.tot.charcoal, n:20, r:{silver:120},
+  say:"No bloom burns hot enough without it."},
+ {t:"Smelt twenty iron",           val:s=>s.tot.iron, n:20, r:{silver:180},
+  say:"Smithing. Iron makes tools, and tools make everything faster."},
+
+ {t:"Make something worth wearing",val:s=>s.ev.crafts, n:1, r:{silver:150},
+  say:"Gear is the second way to grow, after the years themselves."},
+ {t:"Give gear to one of your people",val:s=>s.crew.filter(c=>Object.values(c.eq).some(Boolean)).length, n:1, r:{stores:50},
+  say:"What they wear works as hard as what you wear."},
+ {t:"Sew five sailcloth",          val:s=>s.tot.sailcloth, n:5, r:{silver:200},
+  say:"Sailmaking. A wool sail is more work than the hull it drives."},
+ {t:"Rivet a hull of twenty",      val:s=>s.res.hull, n:20, r:{silver:90},
+  say:"Shipwright. Enough timber and iron in her to float."},
+ {t:"Put a boat in the water",     val:s=>s.boat?1:0, n:1, r:{stores:60},
+  say:"The sea is where rare things come from, and nowhere else."},
+ {t:"Come home from a voyage",     val:s=>lifeEv(s,"voyages"), n:1, r:{comp:"amber"},
+  say:"Amber. Some things cannot be made, only fetched."},
+
+ /* — and then the long work of raising a hall — */
+ {t:"Raise the hall to three",     val:s=>s.hall, n:3, r:{silver:320,comp:"whetstone"},
+  say:"You have found your feet. The reckoning is within reach when you want it."},
+ {t:"Take ten marks",              val:s=>Object.values(s.marks||{}).reduce((a,b)=>a+b,0), n:10, r:{silver:700},
+  say:"They come faster than you would think, once every craft is turning."},
+ {t:"Three at your side",          val:s=>s.crew.length, n:3, r:{silver:500},
+  say:"A hall is the people in it."},
+ {t:"Raise the hall to four",      val:s=>s.hall, n:4, r:{silver:1200},
+  say:"Wide eaves will be wanted before the next storey — a hall holds only what it can hold."},
+ {t:"Reach 20 in any craft",       val:s=>Math.max(...Object.keys(SK).map(k=>myL(s,k))), n:20, r:{comp:"ivory"},
+  say:"The finer gear is only ever shown to you at sea. Sail for it."},
+ {t:"Raise the hall to five",      val:s=>s.hall, n:5, r:{silver:2600},
+  say:"Five at the board, and the stores to feed them."},
+ {t:"Sail the east way",           val:s=>(s.sailed||[]).includes("east")?1:0, n:1, r:{comp:"silk"},
+  say:"The long water. Silk comes from there, and little else does."},
+ {t:"Raise the hall to six",       val:s=>s.hall, n:6, r:{silver:5000},
+  say:"What was once the greatest hall you could raise. It is not, any longer."},
+ {t:"Reach 40 in any craft",       val:s=>Math.max(...Object.keys(SK).map(k=>myL(s,k))), n:40, r:{comp:"glass"},
+  say:"Past what the hall alone will hold. Elder counsel carries you further."},
+ {t:"Raise the hall to seven",     val:s=>s.hall, n:7, r:{silver:12000},
+  say:"Seven pairs of hands, and a roof wide enough for them."},
+ {t:"Raise the hall to eight",     val:s=>s.hall, n:8, r:{silver:26000},
+  say:"Few halls stand this high."},
+ {t:"Nine at your side",           val:s=>s.crew.length, n:9, r:{silver:40000},
+  say:"Every place at the board is taken."},
+ {t:"Raise the hall to nine",      val:s=>s.hall, n:9, r:{silver:60000},
+  say:"One more, and there is nothing above it."},
+ {t:"Raise the hall to ten",       val:s=>s.hall, n:10, r:{silver:120000},
+  say:"The greatest hall. Skills to a hundred, if the counsel is deep enough."}
+];
+
+
+const BAND={
+ er:{en:"Errands",      every:8*60000,  base:4, pay:"resources"},
+ dy:{en:"The day's work",every:40*60000, base:3, pay:"silver"},
+ se:{en:"The season's work",every:180*60000,base:2,pay:"rare things"},
+ ch:{en:"Ancestral charges",every:0,    base:3, pay:"ørlǫg"}
+};
+const ERR=[
+ {w:4,t:"Gather timber",tr:"res:timber",n:80},{w:4,t:"Bring in food",tr:"res:food",n:80},
+ {w:4,t:"Dig bog iron", tr:"res:ore",   n:50},{w:3,t:"Smelt iron",   tr:"res:iron",n:20},
+ {w:3,t:"Shear wool",   tr:"res:wool",  n:40},{w:3,t:"Weave cloth",  tr:"res:cloth",n:15},
+ {w:3,t:"Put up stores",tr:"res:stores",n:30},
+ {w:3,t:"Cook a few pots",tr:"res:meals", n:6},
+ {w:3,t:"Land fish",      tr:"res:fish",  n:60},
+ {w:3,t:"Gather kelp",    tr:"res:kelp",  n:30},
+ {w:3,t:"Burn salt",      tr:"res:salt",  n:20},
+ {w:2,t:"Sew sailcloth",  tr:"res:sailcloth",n:4},
+ {w:3,t:"Gather herbs",   tr:"res:herbs", n:10},{w:2,t:"Rivet strakes",tr:"res:hull",n:12},
+ {w:1,t:"Rise in any craft",tr:"ev:levels",n:5}
+];
+const DAYW=[
+ {w:4,t:"Gather timber",tr:"res:timber",n:600,r:120},{w:4,t:"Bring in food",tr:"res:food",n:600,r:115},
+ {w:4,t:"Dig bog iron", tr:"res:ore",   n:400,r:135},{w:4,t:"Smelt iron",   tr:"res:iron",n:120,r:170},
+ {w:4,t:"Shear wool",   tr:"res:wool",  n:320,r:150},{w:4,t:"Weave cloth",  tr:"res:cloth",n:90,r:180},
+ {w:4,t:"Put up stores",tr:"res:stores",n:260,r:155},
+ {w:4,t:"Land fish",     tr:"res:fish",  n:500,r:130},
+ {w:3,t:"Burn salt",     tr:"res:salt",  n:180,r:150},
+ {w:2,t:"Sew sailcloth", tr:"res:sailcloth",n:40,r:200},
+ {w:3,t:"Cook a great many pots",tr:"res:meals",n:40,r:175},{w:3,t:"Rivet strakes",tr:"res:hull",n:70,r:165},
+ {w:1,t:"Take someone on",tr:"ev:hires",n:1,r:150,req:s=>s.crew.length<HALL[s.hall].crew},
+ {w:1,t:"Make several things",tr:"ev:crafts",n:3,r:160,req:s=>s.known.length>=2&&needsGear(s)},
+ {w:1,t:"Sail out",     tr:"ev:voyages",n:1,r:190,req:s=>s.boat},
+ {w:1,t:"Mend the boat",tr:"ev:mends",  n:1,r:130,req:s=>s.boat},
+ {w:1,t:"Read a tier of lore",tr:"ev:lores",n:1,r:200,req:s=>loreRank(s)>=1}
+];
+const SEAW=[
+ {t:"A winter of timber",  tr:"res:timber",n:4000},{t:"A winter of food",  tr:"res:food",  n:4000},
+ {t:"A winter of bog iron",tr:"res:ore",   n:2500},{t:"A winter of iron",  tr:"res:iron",  n:800},
+ {t:"A winter of wool",    tr:"res:wool",  n:2000},{t:"A winter of cloth", tr:"res:cloth", n:600},
+ {t:"A winter of stores",  tr:"res:stores",n:1600},{t:"A winter of fish",tr:"res:fish",n:3000},
+ {t:"A winter of sailcloth",tr:"res:sailcloth",n:250},{t:"A winter of hull",  tr:"res:hull",  n:400},
+ {t:"A season at sea",     tr:"ev:voyages",n:5,req:s=>s.boat},
+ {t:"A season of reading", tr:"ev:lores",  n:4}
+];
+const CHRG=[
+ {t:"Timber, across the ages",     tr:"life:timber",n:10000,r:20},
+ {t:"Food, across the ages",       tr:"life:food",  n:10000,r:20},
+ {t:"Iron, across the ages",       tr:"life:iron",  n:2000, r:25},
+ {t:"Cloth, across the ages",      tr:"life:cloth", n:1000, r:25},
+ {t:"Voyages, across the ages",    tr:"lev:voyages",n:20,r:30},
+ {t:"Folk taken on, across the ages",tr:"lev:hires",n:20, r:30},
+ {t:"Lore read, across the ages",  tr:"lev:lores",  n:30,   r:35},
+ {t:"Things made, across the ages",tr:"lev:crafts", n:100,  r:35}
+];
+const POOL={er:ERR,dy:DAYW,se:SEAW,ch:CHRG};
+/* Marks — families of tiers rather than one-shot checkboxes.
+   Early tiers pay silver; the deep ones pay ørlǫg, because by the time you reach
+   them silver is a within-run currency and the mark spans many runs. */
+const MARK=[
+ {id:"hew",   t:"Hewer",        d:"timber cut",            val:s=>s.tot.timber,  tiers:[500,5000,50000,400000]},
+ {id:"forage",t:"Forager",      d:"food brought in",       val:s=>s.tot.food,    tiers:[500,5000,50000,400000]},
+ {id:"delve", t:"Delver",       d:"bog iron dug",          val:s=>s.tot.ore,     tiers:[300,3000,30000,250000]},
+ {id:"smelt", t:"Bloom-smelter",d:"iron smelted",          val:s=>s.tot.iron,    tiers:[100,1000,10000,80000]},
+ {id:"herd",  t:"Shepherd",     d:"wool shorn",            val:s=>s.tot.wool,    tiers:[200,2000,20000,150000]},
+ {id:"weave", t:"Weaver",       d:"cloth woven",           val:s=>s.tot.cloth,   tiers:[80,800,8000,60000]},
+ {id:"keep",  t:"Keeper",       d:"winter stores put up",  val:s=>s.tot.stores,  tiers:[150,1500,15000,120000]},
+ {id:"cook",  t:"Pot-keeper",   d:"pots cooked",           val:s=>s.tot.meals,   tiers:[10,100,1000,8000]},
+ {id:"fisher",t:"Netter",       d:"fish landed",           val:s=>s.tot.fish,    tiers:[200,2000,20000,150000]},
+ {id:"salter",t:"Salt-burner",  d:"salt burned",           val:s=>s.tot.salt,    tiers:[80,800,8000,60000]},
+ {id:"sailer",t:"Sailmaker",    d:"sailcloth sewn",        val:s=>s.tot.sailcloth,tiers:[10,80,600,4000]},
+ {id:"herb",  t:"Herb-wise",    d:"herbs turned up",       val:s=>s.tot.herbs,   tiers:[20,200,2000,15000]},
+ {id:"strake",t:"Strake-setter",d:"hull riveted",          val:s=>s.tot.hull,    tiers:[50,500,5000,40000]},
+ {id:"silver",t:"Silver-getter",d:"silver come by",        val:s=>s.tot.silver,  tiers:[500,5000,40000,300000]},
+ {id:"mend",  t:"Mender",       d:"mendings of the boat",  val:s=>s.ev.mends,    tiers:[1,5,25,100]},
+ {id:"sail",  t:"Seafarer",     d:"voyages home",          val:s=>s.ev.voyages,  tiers:[1,5,25,100]},
+ {id:"hire",  t:"Kin-caller",   d:"folk taken on",         val:s=>s.ev.hires,    tiers:[1,5,20,60]},
+ {id:"make",  t:"Maker",        d:"things made",           val:s=>s.ev.crafts,   tiers:[1,10,50,200]},
+ {id:"sell",  t:"Salvager",     d:"things broken down",    val:s=>s.ev.sells,    tiers:[1,10,50,200]},
+ {id:"lore",  t:"Rune-reader",  d:"pieces of lore learned",val:s=>s.ev.lores,    tiers:[1,4,12,30]},
+ {id:"rise",  t:"Rising",       d:"risings in any craft",  val:s=>s.ev.levels,   tiers:[10,100,500,2000]},
+ {id:"best",  t:"Master of one",d:"level in your best craft",val:s=>Math.max(...Object.keys(SK).map(k=>myL(s,k))), tiers:[10,20,30,45]},
+ {id:"broad", t:"Broad-handed", d:"crafts at level 10",    val:s=>Object.keys(SK).filter(k=>myL(s,k)>=10).length, tiers:[3,6,9]},
+ {id:"hall",  t:"Hall-raiser",  d:"the hall's standing",   val:s=>s.hall,        tiers:[2,4,6]},
+ {id:"age",   t:"Age-walker",   d:"reckonings come through",val:s=>s.age,        tiers:[1,3,8,20]},
+ {id:"orl",   t:"Ørlǫg-rich",   d:"tiers taken into ørlǫg",val:s=>Object.values((s&&s.orl)||{}).reduce((a,b)=>a+b,0), tiers:[3,8,15,25]},
+ {id:"girt",  t:"Well-girt",    d:"pieces of gear worn",   val:s=>Object.values(s.eq).filter(Boolean).length+s.crew.reduce((a,c)=>a+Object.values(c.eq).filter(Boolean).length,0), tiers:[4,10,20,40]},
+ {id:"ways",  t:"Way-wise",     d:"ways of making known",  val:s=>s.known.length, tiers:[4,10,18]},
+ {id:"rare",  t:"Rare-getter",  d:"rare things come by",   val:s=>COMP.reduce((a,k)=>a+(s.tot[k]||0),0), tiers:[5,25,100,400]}
+];
+const ROM=["I","II","III","IV","V"];
+const DAY_MS=35*60*1000, WEEK_MS=100*60*1000;   // prototype scale
+
+/* Ragnarök — called by you, not by a calendar. Everything burns except what you shelter. */
+const SHELTER_MAX=6, CREW_THROUGH=1;
+/* ørlǫg — what the ages leave behind. Earned by how far you got, spent on things
+   no fire touches. This is the ladder that replaces the one that ran out. */
+const ORL=[
+ {id:"hearth",en:"Hearth-memory",  tiers:[15,45,110],           at:t=>t?`carry ${[0,10,25,45][t]}% of your silver through the fire`:"nothing carries through"},
+ {id:"roots", en:"Deep roots",     tiers:[25,55,120,260,520],   at:t=>t?`all work +${t*8}%`:"no lasting lift"},
+ {id:"through",en:"Through the fire",tiers:[50,130,300],        at:t=>`sheltered folk keep ${[50,65,80,95][t]}% of what they knew`},
+ {id:"counsel",en:"Counsel",       tiers:[30,65,130,240,420,700],at:t=>`${4+t} errands at a time`},
+ {id:"kin",   en:"Kinship",        tiers:[70,230],              at:t=>`begin at hall ${1+t}`},
+ {id:"memory",en:"Long memory",    tiers:[55,140,320],          at:t=>`shelter ${1+t} thing${t?"s":""} beyond the age`},
+ {id:"blood", en:"Blood-knowledge",tiers:[45,130,300],          at:t=>t?`begin with every craft at ${[0,3,5,8][t]}`:"begin at nothing"},
+ {id:"hoard", en:"Rune-hoard",     tiers:[40,120],              at:t=>t?`carry ${[0,2,5][t]} rare things through`:"no rare thing carries through"},
+ {id:"gate",  en:"Wide gate",      tiers:[35,95],               at:t=>t?`folk cost ${t*15}% less`:"folk cost what they cost"},
+ {id:"tiller",en:"A hand on the tiller",tiers:[180],            at:t=>t?"she is unloaded and put out again without you":"the boat waits for you to see to her"},
+ {id:"known", en:"A known name",     tiers:[60,160,340],       at:t=>t?`crews take ${Math.round(t*12)}% less, and fitting out costs ${t*10}% less`:"crews ask their full share"},
+ {id:"caulk", en:"A caulker's hand",  tiers:[140],             at:t=>t?"her strakes are mended without you, so long as there is cloth and hull":"you mend her yourself"},
+ {id:"board", en:"A standing board",tiers:[150],                 at:t=>t?"the pot goes on again of itself, as long as there is one cooked":"you set the table yourself"},
+ {id:"hand",  en:"Tools to hand",  tiers:[90],                  at:t=>t?"the right tool comes to your hand when you change work":"you carry one tool, and change it yourself"},
+ {id:"swift", en:"Swift hands",    tiers:[50,125,290],          at:t=>t?`every work runs ${t*6}% faster`:"no lasting quickening"}
+];
+const RAG=[
+ {t:s=>`Raise the hall to ${ragNeed(s).hall}`, ok:s=>s.hall>=ragNeed(s).hall, now:s=>`hall ${s.hall}`},
+ {t:s=>`Read ${ragNeed(s).lore} tiers of lore`, ok:s=>loreRank(s)>=ragNeed(s).lore, now:s=>`${loreRank(s)}/${ragNeed(s).lore}`},
+ {t:s=>"Put a boat in the water", ok:s=>s.boat, now:s=>s.boat?"done":"none"},
+ {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
+];
+/* ---------------- state ---------------- */
+const BUILD="v15.0";
+const BUILT="29 Jul 2026, 10:14";
+const MAKING=["smith","weave","keep","ship","sail"];
+/* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
+   so the share of the hall that must forage stays about the same however good you get.
+   Run out and the work stops until there is food again. */
+const EAT_BASE=0.065;
+// a hand eats in step with what it produces — yield and speed both — so the share of
+// the hall that must forage stays the same at level 5 and at level 50
+const appetite=L=>EAT_BASE*(1+0.055*(L-1))*(1+0.075*(L-1));
+const REST_EAT=0.34;   // a hand set down still wants feeding, at about a third
+const working=(s,i)=>i<HALL[s.hall].crew&&!s.crew[i].rest;
+function eatRate(s){
+ let r=appetite(s.act?myL(s,ACT[s.act].sk):1);
+ s.crew.forEach((c,i)=>{ if(i>=HALL[s.hall].crew)return;
+  const a=ACT[c.act]; const e=appetite(a?cL(c,a.sk):1);
+  r+= c.rest ? e*REST_EAT : e; });
+ return r;
+}
+/* Silver goes out as well as in. A hand is paid for the work, not bought. */
+/* Paid for the work, not for the hour. A hand standing idle for want of ore costs
+   you nothing, and a hall that produces nothing spends nothing. If the purse is
+   empty she does not work unpaid — she stops until there is silver again. */
+// flat to the cycle: a quick hand does more work and so earns more by the hour,
+// but the wage does not climb twice over
+const WAGE_CYCLE=0.044;
+const wageFor=(s,c)=>WAGE_CYCLE*(1+0.25*(s.age||0));
+function wageRate(s){   // per second, for the flow panel only
+ let r=0;
+ s.crew.forEach((c,i)=>{ if(!working(s,i))return;
+  const R=runner(s,c); if(!R)return;
+  const short=R.a.use&&Object.keys(R.a.use).some(k=>s.res[k]<R.a.use[k]);
+  if(short||s.starved)return;
+  r+=wageFor(s,c)/R.secs; });
+ return r;
+}
+const RARE_CAP=0.8;
+/* Sending her out worn is allowed, and sometimes she does not come back. The chance
+   is only ever what her condition says it is — nothing hidden. */
+const lossChance=(cond,wear)=>{ const after=cond-wear;
+ return after>=15?0:Math.min(0.6,(15-after)/45); };   // no lore or charm ever makes a find certain
+/* The first hour is authored, not rolled. Each band walks a set list until it runs
+   out, so the opening teaches in an order rather than by luck. */
+const OPENING={
+ er:["Gather timber","Bring in food","Gather herbs","Cook a few pots","Dig bog iron","Shear wool","Rise in any craft","Put up stores"],
+ dy:["Gather timber","Bring in food","Take someone on","Dig bog iron","Make three things","Smelt iron"],
+ se:["A winter of food"]
+};
+const MAKERS=["smith","weave","keep","ship"];
+
+/* ═════════════════════════════════════════════════════════════
+   §2  DERIVED FROM CONTENT
+   Small readings of the tables above — costs, tiers, thresholds.
+   No state is changed here.
+   ═════════════════════════════════════════════════════════════ */
+
+const LT=(s,id)=>((s&&s.lore)||{})[id]||0;
+const loreRank=s=>Object.values((s&&s.lore)||{}).reduce((a,b)=>a+b,0);
+const loreCost=(s,r)=>{const t=LT(s,r.id);
+ const c={silver:Math.round(r.silver*Math.pow(2.25,t))};
+ // the smith and the weaver are wanted for as long as there is lore left to read
+ if(r.br==="Forge lore"&&t>=1) c.iron=Math.round(12*Math.pow(1.9,t-1));
+ if(r.br==="Hall lore" &&t>=1) c.cloth=Math.round(8*Math.pow(1.9,t-1));
+ if(r.br==="Sea lore"  &&t>=1) c.hull=Math.round(10*Math.pow(1.9,t-1));
+ if(r.comp&&t>=2)c[r.comp]=t-1;
+ return c;};
+const loreMins=(s,r)=>+(r.mins*Math.pow(1.55,LT(s,r.id))).toFixed(1);
+const loreMax=(s,r)=>LT(s,r.id)>=r.tiers;
+const loreOpen2=(s,r)=>!loreMax(s,r)&&loreRank(s)>=r.rank;
+const studySlots=s=>1+LT(s,"thing");
+const SHE=()=>"she", HER=()=>"her", HIM=()=>"her";
+const Cap=w=>w[0].toUpperCase()+w.slice(1);
+const lifeEv=(s,k)=>(s.lev&&s.lev[k]||0)+((s.ev||{})[k]||0);
+const introReady=s=>{const q=INTRO[s.intro];return q&&q.val(s)>=q.n;};
+function claimIntro(){
+ const s=S,q=INTRO[s.intro];
+ if(!q||q.val(s)<q.n)return;
+ const bits=[];
+ for(const k in q.r){ if(k==="comp"){give(s,q.r.comp,1);bits.push(CN[q.r.comp]);}
+  else {give(s,k,q.r[k]);bits.push(q.r[k]+" "+k);} }
+ (q.un||[]).forEach(u=>{if(!s.unlocked.includes(u))s.unlocked.push(u);});
+ s.intro++;
+ log(`${q.t} — done. ${bits.join(", ")}. ${q.say}`,"b");
+ toast(q.say); maybeDraw();
+}
+const bandCap=(s,b)=>b==="er"?4+TIER(s,"counsel"):b==="dy"?3+Math.floor(TIER(s,"counsel")/2)
+ :b==="se"?2+Math.floor(TIER(s,"counsel")/3):3;
+const markTier=(s,m)=>(s.marks||{})[m.id]||0;
+const markVal=(s,m)=>{let v;try{v=m.val(s);}catch(_){v=0;}return isFinite(v)?Math.floor(v):0;};
+const markDone=(s,m)=>markTier(s,m)>=m.tiers.length;
+const markNext=(s,m)=>markDone(s,m)?null:m.tiers[markTier(s,m)];
+const markReady=(s,m)=>!markDone(s,m)&&markVal(s,m)>=markNext(s,m);
+const markReward=(s,m)=>{const t=markTier(s,m);
+ return t===0?{silver:80}:{orlog:[6,16,40][t-1]||40};};
+const dur=ms=>{ const t=Math.max(0,Math.ceil(ms/1000));
+ if(t<60) return t+"s";
+ if(t<3600) return Math.floor(t/60)+"m "+String(t%60).padStart(2,"0")+"s";
+ return Math.floor(t/3600)+"h "+String(Math.floor(t%3600/60)).padStart(2,"0")+"m"; };
+const nfm=n=>n>=1000000?(n/1000000).toFixed(n>=10000000?0:1)+"m":n>=1000?(n/1000).toFixed(n>=10000?0:1)+"k":Math.floor(n);
+const qSlots=s=>4+TIER(s,"counsel");
+const trackVal=(s,tr)=>{const [k,v]=tr.split(":");
+ if(k==="res")  return s.tot[v]||0;
+ if(k==="ev")   return (s.ev||{})[v]||0;
+ if(k==="life") return (s.life[v]||0)+(s.tot[v]||0);
+ return (s.lev[v]||0)+((s.ev||{})[v]||0);};
+const qScale=s=>1+0.5*(s.age||0);
+const TIER=(s,id)=>((s&&s.orl)||{})[id]||0;
+const orlCost=(s,u)=>u.tiers[TIER(s,u.id)];
+const orlMaxed=(s,u)=>TIER(s,u.id)>=u.tiers.length;
+function orlPayout(s){ return orlEarned(s)+Math.floor((s.res.silver||0)/200); }
+function orlEarned(s){
+ const lv=Object.keys(SK).reduce((a,k)=>a+myL(s,k),0);
+ const base=lv*0.22+s.hall*3+loreRank(s)*2+(s.boat?4:0);
+ // how far past the least you could have called it — waiting is paid for
+ const n=ragNeed(s), best=Math.max(...Object.keys(SK).map(k=>myL(s,k)));
+ const over=Math.min(3, (best/n.lv + loreRank(s)/n.lore + s.hall/n.hall)/3);
+ return Math.max(1,Math.round(base*Math.max(1,Math.pow(over,1.6))));
+}
+const ragNeed=s=>({hall:Math.min(6,3+Math.floor((s.age||0)/2)), lore:4+2*(s.age||0), lv:12+4*(s.age||0)});
+const rareChance=(base,mult)=>Math.min(RARE_CAP,base*mult);
+const shelterCap=s=>Math.min(SHELTER_MAX,1+(s.age||0)+TIER(s,"memory"));
+
+/* ═════════════════════════════════════════════════════════════
+   §3  STATE, RULES, VIEW AND INPUT
+   The working parts. State first, then the tick, then what is drawn.
+   ═════════════════════════════════════════════════════════════ */
+
+let S,tab="work",speed=1,last=0,holding=false,pendingDraw=false;
+/* early levels come fast so the first minutes always feel like they are paying out,
+   then the curve steepens once several things are running at once */
+const xpFor=n=>n<=6 ? Math.round(16*Math.pow(n-1,1.45))
+                    : Math.round(16*Math.pow(5,1.45)+40*Math.pow(n-6,2.15));
+const lvl=xp=>{let n=1;while(n<MAX_LEVEL&&xp>=xpFor(n+1))n++;return n;};
+const myL=(s,k)=>lvl(s.xp[k]);
+// the hall only holds so much learning; past it you still rise, but slowly
+const MAX_LEVEL=100;
+/* The hall holds eight levels a storey; Elder counsel adds five a tier. A hundred
+   wants the tenth hall AND four tiers of counsel — neither alone will do it. */
+const softCap=s=>Math.min(MAX_LEVEL,s.hall*8+5*LT(s,"elder"));
+const overCap=(s,k)=>myL(s,k)>=softCap(s);
+const atMax=(s,k)=>myL(s,k)>=MAX_LEVEL;
+const cL=(c,k)=>lvl(c.xp[k]||0);
+function blankEq(){return{tool:null,garment:null,rune:null,amulet:null};}
+/* Two bound axes are the same axe. Nothing tells them apart — no wear, no quality —
+   so what you own is a count for each way of making, not a heap of separate things. */
+const own=(s,id)=>(s.items||{})[id]||0;
+const addItem=(s,id,n)=>{ s.items[id]=own(s,id)+(n===undefined?1:n); if(s.items[id]<=0)delete s.items[id]; };
+const ownedIds=s=>Object.keys(s.items||{}).filter(id=>s.items[id]>0);
+const itemCount=s=>Object.values(s.items||{}).reduce((a,b)=>a+b,0);
+const wearers=s=>[{eq:s.eq,sk:null,me:true,who:"me",name:"you"},
+  ...s.crew.map((c,i)=>({eq:c.eq,sk:c.sk,who:i,name:c.name}))];
+const KN=id=>LT(S,id)>0;
+// who among the named already works this craft
+function onCraft(s,skl){
+ return s.crew.map((c,i)=>({c,working:i<HALL[s.hall].crew})).filter(x=>x.c.sk===skl);
+}
+const RX={
+ ore:()=>Math.max(0.4,1-0.07*LT(S,"coal")),
+ make:()=>1+0.06*LT(S,"bellows"),
+ tool:()=>1+0.15*LT(S,"weld"),
+ wear:()=>Math.max(0.3,1-0.10*LT(S,"tar")),
+ voy:()=>Math.max(0.4,1-0.08*LT(S,"sun")),
+ rare:()=>1+0.20*LT(S,"star"),
+ silver:()=>1+0.15*LT(S,"keel"),
+ teach:()=>1+0.25*LT(S,"fire"),
+ store:()=>1+0.35*LT(S,"eaves"),
+ hire:()=>Math.max(0.4,1-0.08*LT(S,"guest")),
+ table:()=>tableBonus(S),
+ xp:()=>1+0.08*LT(S,"tally"),
+ age:()=>1+0.09*(S.age||0)+0.08*TIER(S,"roots"),
+ swift:()=>1+0.06*TIER(S,"swift")};
+/* A pot is worth little from a poor cook. Both how long it lasts and how much it
+   lifts are bought with Cooking levels, not given. */
+// one pot for every mouth at the board — the more hands it lifts, the more it costs
+/* A pot for every mouth, and a strong hand eats more of it — the same curve as
+   appetite, so a sitting costs the same share of a hall's cooking at any level. */
+const potShare=L=>(1+0.055*(L-1))*(1+0.075*(L-1));
+function tableCost(s){
+ let n=potShare(s.act?myL(s,ACT[s.act].sk):1);
+ s.crew.forEach((c,i)=>{ if(i>=HALL[s.hall].crew)return;
+  const a=ACT[c.act]; n+=potShare(a?cL(c,a.sk):1)*(c.rest?REST_EAT:1); });
+ return Math.max(1,Math.round(n));
+}
+const tableMs=s=>Math.round((3+0.35*(myL(s,"cook")-1))*60000);
+const tableLift=s=>0.07+0.008*(myL(s,"cook")-1);
+const atTable=s=>(s.table||0)>0;
+const tableBonus=s=>atTable(s)?1+(s.tableLift||0):1;
+function log(t,c){S.log.unshift({t,c:c||""});if(S.log.length>90)S.log.pop();}
+let toastT=null;
+function toast(m){const e=document.getElementById("toast");if(!e)return;e.textContent=m;e.classList.add("s");
+ clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove("s"),1900);}
+function give(s,k,n){s.res[k]=(s.res[k]||0)+n;s.tot[k]=(s.tot[k]||0)+n;
+ const c=capOf(s);
+ if(c[k]&&s.res[k]>c[k]){ if(s.lost)s.lost[k]=(s.lost[k]||0)+(s.res[k]-c[k]); s.res[k]=c[k]; }}
+// a reward is a transfer, not a harvest — it fills the store but counts as nothing
+// gathered, so it can never push another errand along
+function grant(s,k,n){ s.res[k]=(s.res[k]||0)+n;
+ const c=capOf(s); if(c[k]&&s.res[k]>c[k])s.res[k]=c[k]; }
+function clampR(s){const c=capOf(s);for(const k in c)if(s.res[k]>c[k])s.res[k]=c[k];}
+function eqBonus(eq,skl,kind){
+ let v=0;
+ for(const sl in eq){const it=eq[sl];if(!it)continue;const r=REC.find(x=>x.id===it);if(!r)continue;
+  if(kind==="speed"&&r.bonus.speed&&r.sk===skl)v+=r.bonus.speed;
+  if(kind==="yield"){if(r.bonus.yield&&r.sk===skl)v+=r.bonus.yield;if(r.bonus.all)v+=r.bonus.all;}
+  if(kind==="xp"&&r.bonus.xp)v+=r.bonus.xp;
+  if(kind==="luck"&&r.bonus.luck)v+=r.bonus.luck;}
+ return v;
+}
+function mkP(i){const p={name:NAMES[i%NAMES.length],xp:{},at:null};for(const k in SK)p.xp[k]=0;return p;}
+function fresh(){
+ const xp={},tot={};for(const k in SK)xp[k]=0;[...RES,...COMP].forEach(k=>tot[k]=0);
+ const res={};[...RES,...COMP].forEach(k=>res[k]=0);res.food=40;   // long enough to read the door and choose
+ return{t:0,res,tot,xp,act:null,prog:0,eq:blankEq(),
+  crew:[],hall:1,unlocked:["woods","hew"],known:[],items:{},
+  intro:0,q:{er:[],dy:[],se:[],ch:[]},qt:{er:0,dy:0,se:0},life:{},lev:{},
+  offers:[],offerT:0,voy:null,log:[],boat:false,cond:100,used:[],lore:{},studies:[],
+  got:[],marks:{},mseen:{},seekN:0,seen:0,flow:null,unpaid:false,starved:false,pick:null,shut:{},want:null,auto:{tiller:1,caulk:1,board:1,hand:1},craftSeen:[],goal:null,kept:0,feastBoost:0,iseen:0,chDone:[],table:0,tableMax:0,tableLift:0,tkn:{er:0,dy:0,se:0},
+  ev:{hires:0,crafts:0,voyages:0,sells:0,mends:0,levels:0,lores:0,tables:0}, did:{},
+  age:0,picking:false,picks:[],orl:{},orlog:0};
+}
+const day=s=>Math.floor(s.t/60000)+1;
+const capOf=s=>{const m=HALL[s.hall].capx*RX.store();const c={};
+ const BASE={food:200,timber:200,fish:180,ore:160,wool:150,kelp:140,herbs:90,bark:90,clay:90,horn:90,
+  salt:120,charcoal:140,iron:120,yarn:150,cloth:120,stores:150,meals:120,sailcloth:150,hull:150};
+ RES.forEach(k=>c[k]=k==="silver"?1e9:Math.round((BASE[k]||120)*m));
+ COMP.forEach(k=>c[k]=999);return c;};
+/* one work cycle for a runner — the player when c is null, otherwise a hired hand */
+function runner(s,c){
+ const k=c?c.act:s.act,a=ACT[k];if(!a)return null;
+ const L=c?cL(c,a.sk):myL(s,a.sk), eq=c?c.eq:s.eq;
+ const spd=(1+0.075*(L-1)+eqBonus(eq,a.sk,"speed")*RX.tool())*(c?0.85:1)*RX.swift();
+ const yld=(1+0.055*(L-1))*(1+eqBonus(eq,a.sk,"yield")*RX.tool())*RX.age()*RX.table()*(MAKING.includes(a.sk)?RX.make():1);
+ return{a,L,secs:a.secs/spd,yld,xpm:1+eqBonus(eq,a.sk,"xp")};
+}
+function doCycle(s,c){
+ if(s.starved&&!(c===null&&ACT[s.act]&&ACT[s.act].out.food))return;   // hungry hands do nothing but forage
+ const R=runner(s,c);if(!R)return;
+ const a=R.a;
+ const uc=k=>a.use[k]*(k==="ore"?RX.ore():1);
+ if(a.use)for(const k in a.use)if(s.res[k]<uc(k))return;
+ if(a.use)for(const k in a.use)s.res[k]-=uc(k);
+ if(c){ const w=wageFor(s,c);
+  if(s.res.silver<w){ if(!s.unpaid){s.unpaid=true;
+    log("The purse is empty. Your people will not work unpaid — they sit until there is silver.","bad");
+    toast("No silver — the hands have stopped");} return; }
+  s.res.silver-=w; if(s.unpaid){s.unpaid=false;log("There is silver in the purse again.","g");} }
+ s.did=s.did||{}; s.did[c?c.act:s.act]=(s.did[c?c.act:s.act]||0)+1;   // a tally per work, so a task can name one
+ for(const k in a.out)give(s,k,a.out[k]*R.yld);
+ if(a.rare)for(const k in a.rare){const eq=c?c.eq:s.eq;
+  if(Math.random()<rareChance(a.rare[k],RX.rare()*(1+eqBonus(eq,null,"luck")))){give(s,k,1);
+   log(`${c?c.name:"You"} ${k==="herbs"?"turn up herbs among the grass":"bring"+(c?"s":"")+" up "+CN[k].toLowerCase()+" from the water"}.`,"y");
+   if(!c&&k!=="herbs")toast("Rare: "+CN[k]);}}
+ const bl=c?cL(c,a.sk):myL(s,a.sk);
+ if(c){
+  if(cL(c,a.sk)<Math.min(MAX_LEVEL,c.capL||99)) c.xp[a.sk]=(c.xp[a.sk]||0)+a.xp*R.xpm*0.32*RX.xp();
+  // you pick the craft up from watching — but an apprentice never passes the master
+  if(myL(s,a.sk)<cL(c,a.sk)){
+   const was=myL(s,a.sk);
+   s.xp[a.sk]+=a.xp*0.18*RX.teach()*(overCap(s,a.sk)?0.25:1);
+   if(myL(s,a.sk)>was){s.ev.levels++;log(`Watching ${c.name}, you reach ${SK[a.sk]} ${myL(s,a.sk)}.`,"y");}
+  }
+ } else if(!atMax(s,a.sk)) s.xp[a.sk]+=a.xp*R.xpm*RX.xp()*RX.age()*(overCap(s,a.sk)?0.25:1);
+ const al=c?cL(c,a.sk):myL(s,a.sk);
+ if(al>bl){s.ev.levels++;log(`${c?c.name:"You"} reach${c?"es":""} ${SK[a.sk]} ${al}.`,"y");}
+}
+/* ---------------- tick ---------------- */
+function advance(dt){
+
+  const s=S;s.t+=dt;
+ // player
+ const R=runner(s,null);
+ if(R){const need=R.a.use?Object.keys(R.a.use).every(k=>s.res[k]>=R.a.use[k]):true;
+  if(need){s.prog+=dt;while(s.prog>=R.secs*1000){s.prog-=R.secs*1000;doCycle(s,null);}}
+  else s.prog=Math.min(s.prog,R.secs*1000);}
+ // crew
+ s.crew.forEach((c,i)=>{
+  if(c.rest||c.away||i>=HALL[s.hall].crew)return;   // set down, or over the roof
+  const r=runner(s,c);if(!r)return;
+  const ok=r.a.use?Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]):true;
+  if(!ok)return;
+  c.prog+=dt;while(c.prog>=r.secs*1000){c.prog-=r.secs*1000;doCycle(s,c);}});
+ // voyage
+ // the board is eaten from first, before any work is done
+ const hunger=eatRate(s)*(dt/1000);
+ if(s.res.food>=hunger){ s.res.food-=hunger; if(s.starved){s.starved=false;log("There is food in the hall again.","g");} }
+ else { s.res.food=0; if(!s.starved){s.starved=true;log("The hall has nothing to eat. Everything stops until it does.","bad");toast("No food — the work has stopped");} }
+ if(s.table>0){ s.table=Math.max(0,s.table-dt);
+  if(s.table===0)log("The pot is empty and the board is cleared.","b"); }
+ // a standing board fills itself again, so long as something is cooked
+ if(!s.table&&TIER(s,"board")&&autoOn(s,"board")&&s.res.meals>=tableCost(s)) setTable(true);
+ if(s.voy&&!s.voy.home){ s.voy.left-=dt;
+  if(s.voy.left<=0){ s.voy.left=0; s.voy.home=true; s.voy.haul=rollHaul(s,s.voy.id);
+   if(TIER(s,"tiller")>0&&autoOn(s,"tiller")){ land(); }    // a pilot brings her in himself
+   else { log(`She is back on the sand with ${haulText(s.voy.haul)}.`,"y"); toast("The boat is home"); } } }
+ if(s.studies&&s.studies.length){
+  s.studies.forEach(st=>{ if(st.ready)return; st.left-=dt;
+   if(st.left<=0){ st.left=0; st.ready=true;
+    const r=RSCH.find(x=>x.id===st.id);
+    log(`${r.en} ${ROM[LT(s,r.id)]} is read through. Go and take it.`,"y");
+    toast("Lore ready: "+r.en); }});
+ }
+ // recruit offers refresh
+ s.offerT-=dt;if(s.offerT<=0||s.offers.length===0)rollOffers();
+ // quests
+ ["er","dy","se"].forEach(b=>{
+  s.qt[b]+=dt;
+  const every=BAND[b].every/(b==="er"?1:1);
+  while(s.qt[b]>=every){ s.qt[b]-=every;
+   if(s.q[b].length<bandCap(s,b)){const q=newQ(s,b);if(q){s.q[b].push(q);
+    if(b!=="er")log(`${BAND[b].en} — new work waits.`,"b");}} }
+ });
+ if(s.q.ch.length<bandCap(s,"ch")){const q=newQ(s,"ch");if(q)s.q.ch.push(q);}
+ checkQ();
+ draw();
+}
+function tick(){
+ const now=performance.now();
+ advance(Math.min(400,now-last)*speed); last=now;
+ maybeDraw(); paint();
+}
+function learnCheck(s){
+ REC.forEach(r=>{ if(!r.learn||s.known.includes(r.id))return;
+  if(r.pre&&!s.known.includes(r.pre))return;          // never the second before the first
+  if(myL(s,r.learn.sk)>=r.learn.lv){ s.known.push(r.id);
+   log(`You work out how a ${r.en.toLowerCase()} is made.`,"y"); toast("Learned: "+r.en); } });
+}
+function checkQ(){
+ const s=S; learnCheck(s);
+ if(introReady(s)&&!s.iseen){s.iseen=1;log(`${INTRO[s.intro].t} — done. Go and take it.`,"y");toast("The way on");}
+ if(!introReady(s))s.iseen=0;
+ if(!s.done)s.done={};
+ if(!s.marks)s.marks={};
+ if(!s.mseen)s.mseen={};
+ MARK.forEach(m=>{ const key=m.id+markTier(s,m);
+  if(markReady(s,m)&&!s.mseen[key]){ s.mseen[key]=1;
+  log(`${m.t} ${ROM[markTier(s,m)]} stands ready to be taken.`,"y");toast("Mark: "+m.t+" "+ROM[markTier(s,m)]);}});
+ ["er","dy","se","ch"].forEach(b=>s.q[b].forEach(q=>{if(q.done)return;
+  if(trackVal(s,q.tr)-q.base>=q.n){q.done=true;
+   log(`${q.t} — finished. Go and take what is owed.`,"g");toast("Ready to collect");}}));
+}
+// is there anything left to make that would be an improvement on somebody?
+// an empty slot counts, and so does a better thing than what they already wear
+const recVal=r=>Object.values(r.bonus).reduce((a,b)=>a+b,0);
+function fits(r,skl){ return !r.sk || r.sk===skl; }
+// everyone who could wear a thing, and the best they could field for that slot
+// right now — counting what is unworn in the pile, not only what is on their back
+function holdersOf(s){
+ return [{eq:s.eq,sk:null,me:true,who:"me"},...s.crew.map((c,i)=>({eq:c.eq,sk:c.sk,who:i}))];
+}
+const rFits=(r,h)=>!r.sk||h.me||r.sk===h.sk;
+/* You have one tool slot but ten crafts, so you want a tool for each and swap as
+   you switch. A hired hand only ever wants the one for her own craft. So your need
+   is counted per craft, hers per slot. */
+const needKey=(h,r)=>(h.me&&r.slot==="tool"&&r.sk)?`me|tool|${r.sk}`:`${h.who}|${r.slot}`;
+const sameNeed=(a,b,h)=>needKey(h,a)===needKey(h,b);
+/* Everything moving, per minute: what each pair of hands brings in and spends,
+   what the hall eats, and who is standing idle for want of something. */
+function flows(s){
+ const f={}, idle=[];
+ const add=(k,n,who)=>{ f[k]=f[k]||{in:0,out:0,from:[],to:[]};
+  if(n>0){f[k].in+=n; f[k].from.push({who,n});} else {f[k].out-=n; f[k].to.push({who,n:-n});} };
+ const one=(c,i)=>{
+  const R=runner(s,c); if(!R)return;
+  const who=c?c.name:"you";
+  if(c&&(c.rest||i>=HALL[s.hall].crew)){ idle.push({who,why:c.rest?"set down":"no room"}); return; }
+  const short=R.a.use&&Object.keys(R.a.use).filter(k=>s.res[k]<R.a.use[k]*(k==="ore"?RX.ore():1));
+  if(s.starved&&!R.a.out.food){ idle.push({who,why:"nothing to eat"}); return; }
+  if(short&&short.length){ idle.push({who,why:"no "+short.join(", ")}); return; }
+  const per=60/R.secs;
+  for(const k in R.a.out) add(k,R.a.out[k]*R.yld*per,who);
+  if(R.a.use)for(const k in R.a.use) add(k,-R.a.use[k]*(k==="ore"?RX.ore():1)*per,who);
+  if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*(1+eqBonus(c?c.eq:s.eq,null,"luck")))*per,who);
+ };
+ one(null,-1); s.crew.forEach((c,i)=>one(c,i));
+ const eat=eatRate(s)*60; if(eat>0) add("food",-eat,"the hall eats");
+ const wage=wageRate(s)*60; if(wage>0) add("silver",-wage,"wages");
+ for(const k in f) f[k].net=f[k].in-f[k].out;
+ return {f,idle};
+}
+function allot(s){
+ const need={}, W=wearers(s);
+ /* A hired hand has four slots. You have three, and then one tool need for every
+    craft — you carry one at a time but want the right one for each. */
+ const keyFor=(h,r)=>(h.me&&r.slot==="tool")?`me|tool|${r.sk}`:`${h.who}|${r.slot}`;
+ W.forEach(h=>Object.keys(SLOTS).forEach(sl=>{
+  if(h.me&&sl==="tool")return;
+  need[h.who+"|"+sl]={who:h.who,name:h.name,slot:sl,me:!!h.me,sk:h.sk,got:null,val:0};
+ }));
+ Object.keys(SK).forEach(sk=>{
+  need["me|tool|"+sk]={who:"me",name:"you",slot:"tool",me:true,sk,craft:sk,got:null,val:0};
+ });
+ // what is already worn counts, unless it is a tool for another craft
+ W.forEach(h=>Object.keys(SLOTS).forEach(sl=>{
+  const worn=h.eq[sl]; if(!worn)return;
+  const r=REC.find(x=>x.id===worn); if(!r)return;
+  const k=keyFor(h,r);
+  if(!need[k])return;
+  need[k].worn=r.id;
+  const useful=!r.sk||h.me||r.sk===h.sk;
+  if(useful){ need[k].got=r.id; need[k].val=recVal(r); }
+ }));
+ // a hired hand wearing the wrong tool: mark the slot so the crew card can say so
+ s.crew.forEach((c,i)=>{ const worn=c.eq.tool; if(!worn)return;
+  const r=REC.find(x=>x.id===worn); if(r&&r.sk&&r.sk!==c.sk) need[i+"|tool"].worn=r.id; });
+
+ // hand out what is in the hall, best first, to whoever gains most by it
+ const pool=[];
+ ownedIds(s).forEach(id=>{ for(let i=0;i<own(s,id);i++) pool.push(id); });
+ pool.sort((a,b)=>recVal(REC.find(x=>x.id===b))-recVal(REC.find(x=>x.id===a)));
+ const give={}, spare={};
+ pool.forEach(id=>{
+  const r=REC.find(x=>x.id===id);
+  let bestK=null,gain=1e-9;
+  for(const k in need){ const nd=need[k];
+   if(give[k])continue;
+   if(nd.slot!==r.slot)continue;
+   if(nd.me&&r.slot==="tool"){ if(r.sk!==nd.craft)continue; }
+   else if(r.sk&&!nd.me&&r.sk!==nd.sk)continue;
+   const g=recVal(r)-nd.val;
+   if(g>gain){gain=g;bestK=k;}
+  }
+  if(bestK){ give[bestK]=id; need[bestK].val=recVal(r); need[bestK].wants=id; }
+  else spare[id]=(spare[id]||0)+1;
+ });
+ return {need,give,spare};
+}
+const bestValFor=(s,A,slot,sk,me)=>{
+ let v=0;
+ for(const k in A.need){ const nd=A.need[k];
+  if(nd.slot!==slot)continue;
+  if(!!nd.me!==!!me)continue;
+  if(slot==="tool"&&sk&&nd.sk&&nd.sk!==sk)continue;
+  v=Math.max(v,nd.val);
+ }
+ return v;
+};
+function makeableNow(s){
+ const A=allot(s);
+ return s.known.filter(id=>{const r=REC.find(x=>x.id===id);
+  if(!r||myL(s,r.make)<r.lv)return false;
+  if(!Object.entries(r.cost).every(([k,v])=>s.res[k]>=Math.max(1,Math.round(v*RX.ore()))))return false;
+  if(!Object.entries(r.comp).every(([k,v])=>(s.res[k]||0)>=v))return false;
+  // worth making only if somebody would actually wear it over what they could field
+  for(const k in A.need){ const nd=A.need[k];
+   if(nd.slot!==r.slot)continue;
+   if(r.sk&&!nd.me&&r.sk!==nd.sk)continue;
+   if(nd.me&&r.slot==="tool"&&r.sk&&nd.sk&&nd.sk!==r.sk)continue;
+   if(recVal(r)>nd.val)return true;
+  }
+  return false;
+ });
+}
+const spareOf=(s,A)=>(A||allot(s)).spare;
+function needsGear(s){ return makeableNow(s).length>0 ||
+ (()=>{const A=allot(s); return s.known.some(id=>{const r=REC.find(x=>x.id===id);
+   if(!r)return false;
+   for(const k in A.need){const nd=A.need[k];
+    if(nd.slot!==r.slot)continue;
+    if(r.sk&&!nd.me&&r.sk!==nd.sk)continue;
+    if(recVal(r)>nd.val)return true;}
+   return false;});})();
+}
+const loreOpen=s=>RSCH.some(r=>loreOpen2(s,r)&&Object.entries(loreCost(s,r)).every(([k,v])=>(s.res[k]||0)>=v));
+function doable(s,q){
+ if(q.req&&!q.req(s))return false;
+ const [kind,r]=q.tr.split(":");
+ if(kind==="ev"||kind==="lev")return true;        // deeds, this age or across all of them
+ // a thing you only ever turn up by chance still counts as something you can gather
+ return s.unlocked.some(u=>Object.keys(ACT[u].out||{}).includes(r)||Object.keys(ACT[u].rare||{}).includes(r));
+}
+const SCARCE=s=>Object.keys(s.res).filter(k=>RES.includes(k)&&k!=="silver")
+ .sort((a,b)=>(s.res[a]||0)-(s.res[b]||0));
+function errandPay(s){
+ // never hand out meals — those are cooked, not given
+ const short=SCARCE(s).filter(k=>k!=="meals").slice(0,3);
+ const k=short[Math.floor(Math.random()*short.length)]||"timber";
+ const c=capOf(s), n=Math.max(8,Math.round((c[k]||100)*0.14));
+ return {res:k,n};
+}
+function seasonChoices(s){
+ // silver is always one of the three; the other two are a rare thing and, if there
+ // is one left to learn, a way of making
+ const k=qScale(s);
+ const out=[{kind:"silver",n:Math.round((400+Math.random()*400)*k)}];
+ const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
+ if(un.length) out.push({kind:"way",rec:un[Math.floor(Math.random()*un.length)].id});
+ const c=[...COMP].sort(()=>Math.random()-.5);
+ const many=1+Math.floor(Math.random()*2)+Math.floor((s.age||0)/2);
+ let i=0; while(out.length<3&&i<c.length) out.push({kind:"comp",res:c[i++],n:many});
+ return out;
+}
+// a way you have learned since the work was set is no use — swap it for a rare thing
+function liveChoices(s,q){
+ // the swap is made once and kept — picking a fresh one each render made it flicker
+ (q.choices||[]).forEach((c,i)=>{
+  if(c.kind!=="way"||!s.known.includes(c.rec))return;
+  const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
+  q.choices[i]=un.length ? {kind:"way",rec:un[Math.floor(Math.random()*un.length)].id}
+                         : {kind:"comp",res:COMP[Math.floor(Math.random()*COMP.length)],n:2};
+ });
+ return q.choices||[];
+}
+const anA=w=>/^[aeiou]/i.test(w)?"an":"a";
+const choiceLabel=c=>c.kind==="way"?(()=>{const n=REC.find(r=>r.id===c.rec).en.toLowerCase();
+  return `How ${anA(n)} ${n} is made`;})()
+ :c.kind==="comp"?`${c.n} ${CN[c.res].toLowerCase()}`:`${c.n} silver`;
+function newQ(s,band,opt){
+ const o=opt||{};
+ const pool=POOL[band].filter(q=>doable(s,q));
+ const live=[...s.q[band].map(q=>q.tr),...(o.avoid?[o.avoid]:[])];
+ let free=pool.filter(q=>!live.includes(q.tr));
+ if(band==="ch"){
+  free=free.filter(q=>!(s.chDone||[]).includes(q.t));
+  // always offer the ones you are nearest to finishing
+  free=free.slice().sort((a,b)=>(trackVal(s,b.tr)/b.n)-(trackVal(s,a.tr)/a.n));
+ }
+ if(!free.length)return null;
+ if(band==="ch"){ const pick=free[0];
+  return {band,t:pick.t,tr:pick.tr,n:pick.n,base:0,done:false,
+   orlog:Math.round(pick.r*(1+0.35*(s.age||0)))}; }
+ let pick=null;
+ const script=OPENING[band];
+ if(script&&!o.skipOpening&&!(s.age||0)){
+  const n=(s.tkn&&s.tkn[band])||0;
+  for(let i=n;i<script.length&&!pick;i++) pick=free.find(q=>q.t===script[i]);
+ }
+ if(!pick){const tot=free.reduce((a,q)=>a+(q.w||1),0);let r=Math.random()*tot;
+  for(const q of free){r-=(q.w||1);if(r<=0){pick=q;break;}}
+  if(!pick)pick=free[0];}
+ const k=band==="ch"?1:qScale(s);
+ const q={band,t:pick.t,tr:pick.tr,n:Math.max(1,Math.round(pick.n*k)),
+  base:trackVal(s,pick.tr),done:false};
+ if(band==="er"){ q.pay=errandPay(s); q.silver=Math.round(12*qScale(s)); }
+ if(band==="dy") q.silver=Math.round(pick.r*k);
+ if(band==="se") q.choices=seasonChoices(s);
+ if(band==="ch") q.orlog=Math.round(pick.r*(1+0.35*(s.age||0)));
+ return q;
+}
+function topUp(s){
+ ["er","dy","se","ch"].forEach(b=>{
+  while(s.q[b].length<bandCap(s,b)){const q=newQ(s,b);if(!q)break;s.q[b].push(q);}});
+}
+const rerollCost=s=>Math.round(30*(1+0.6*(s.age||0)));
+function reroll(band,i){
+ const s=S,arr=s.q[band],q=arr[i];
+ if(!q||q.done||band==="ch")return;
+ const c=rerollCost(s);
+ if(s.res.silver<c){toast(`${c} silver to set it aside`);return;}
+ s.res.silver-=c; arr.splice(i,1);
+ const n=newQ(s,band,{skipOpening:true,avoid:q.tr}); arr.splice(i,0,n||q);
+ log("You set that work aside for another.","b");maybeDraw();
+}
+function collect(band,i,choice){
+ const s=S,arr=s.q[band],q=arr[i];
+ if(!q||!q.done)return;
+ let msg="";
+ if(band==="er"){ grant(s,q.pay.res,q.pay.n); give(s,"silver",q.silver||0);
+  msg=`${q.pay.n} ${q.pay.res}`+(q.silver?` and ${q.silver} silver`:""); }
+ if(band==="dy"){ give(s,"silver",q.silver); msg=`${q.silver} silver`; }
+ if(band==="se"){ const c=liveChoices(s,q)[choice||0];
+  if(c.kind==="way"){ if(!s.known.includes(c.rec))s.known.push(c.rec);
+   msg="how a "+REC.find(r=>r.id===c.rec).en.toLowerCase()+" is made"; }
+  else if(c.kind==="comp"){ give(s,c.res,c.n); msg=`${c.n} ${CN[c.res].toLowerCase()}`; }
+  else { give(s,"silver",c.n); msg=`${c.n} silver`; } }
+ if(band==="ch"){ s.orlog=(s.orlog||0)+q.orlog; msg=`${q.orlog} ørlǫg`; s.chDone=[...(s.chDone||[]),q.t]; }
+ arr.splice(i,1); s.taken=(s.taken||0)+1;
+ if(s.tkn)s.tkn[band]=(s.tkn[band]||0)+1;
+ // errands and the rest wait on their clock; charges have none, so the next comes now
+ if(band==="ch"){ const n=newQ(s,"ch"); if(n)arr.push(n); }
+ log(`Taken — ${msg}.`,"g");toast("+"+msg);maybeDraw();
+}
+function claimMark(id){
+ const s=S,m=MARK.find(x=>x.id===id);
+ if(!m||!markReady(s,m))return;
+ const t=markTier(s,m), r=markReward(s,m);
+ if(r.silver)give(s,"silver",r.silver);
+ if(r.orlog)s.orlog=(s.orlog||0)+r.orlog;
+ s.marks[m.id]=t+1;
+ log(`${m.t} ${ROM[t]} — taken. ${r.silver?r.silver+" silver":r.orlog+" ørlǫg"}.`,"y");
+ toast("+"+(r.silver?r.silver+" silver":r.orlog+" ørlǫg"));
+ maybeDraw();
+}
+function seed(s){
+ s.q.er=[]; s.q.dy=[]; s.q.se=[];        // charges outlive the hall, so leave them
+ // a new hall opens with every band full — there is nothing to wait for on day one
+ ["er","dy","se","ch"].forEach(b=>{
+  while(s.q[b].length<bandCap(s,b)){const q=newQ(s,b);if(!q)break;s.q[b].push(q);}});
+ s.qt.dy=BAND.dy.every*0.5; s.qt.se=BAND.se.every*0.5;
+ while(s.q.ch.length<bandCap(s,"ch")){const q=newQ(s,"ch");if(!q)break;s.q.ch.push(q);}
+}
+function rollDaily(){ seed(S); }
+function rollWeekly(){ /* the bands fill themselves */ }
+function freeName(s,taken){
+ const inUse=new Set([...s.crew.map(c=>c.name),...(taken||[]),...(s.used||[])]);
+ const pool=NAMES.filter(n=>!inUse.has(n));
+ return (pool.length?pool:NAMES)[Math.floor(Math.random()*(pool.length?pool.length:NAMES.length))];
+}
+function takeLore(i){
+ const s=S,st=s.studies[i]; if(!st||!st.ready)return;
+ const r=RSCH.find(x=>x.id===st.id);
+ s.lore[r.id]=(s.lore[r.id]||0)+1; s.ev.lores++;
+ s.studies.splice(i,1);
+ log(`${r.en} ${ROM[s.lore[r.id]-1]} — taken. ${r.eff(s.lore[r.id])}.`,"y");
+ toast(r.en+" "+ROM[s.lore[r.id]-1]); maybeDraw();
+}
+function study(id){const s=S,r=RSCH.find(x=>x.id===id);if(!r)return;
+ if(s.studies.length>=studySlots(s)){toast("You can hold no more in your head at once");return;}
+ if(s.studies.some(st=>st.id===id)){toast("Already being read");return;}
+ if(!loreOpen2(s,r)){toast(`Wants rank ${r.rank} first`);return;}
+ const c=loreCost(s,r);
+ for(const k in c)if((s.res[k]||0)<c[k]){toast("Not enough "+(CN[k]||k));return;}
+ for(const k in c)s.res[k]-=c[k];
+ const ms=loreMins(s,r)*60000;
+ s.studies.push({id,left:ms,tot:ms});
+ log(`You set to reading ${r.en.toLowerCase()} ${ROM[LT(s,r.id)]}.`,"b");maybeDraw();}
+function rollOffers(){
+ const s=S; s.offerT=Math.round(240000/(1+0.25*LT(s,"guest"))); s.seekN=0;
+ const open=Object.keys(SK).filter(k=>s.unlocked.some(u=>ACT[u].sk===k));
+ if(!s.crew.length&&!(s.used||[]).length){
+  s.offers=[{name:"Ásta",sk:"forage",L:2,capL:7,cost:25}];return;}
+ const taken=[],used=[];
+ const boost=s.feastBoost||0; s.feastBoost=0;
+ // one cheap, one middling, one dear — never two of a craft, so never more
+ // offers than there are crafts you could actually use
+ const bands=[0,1,2].slice(0,Math.max(1,Math.min(3,open.length)));
+ s.offers=bands.map(band=>{
+  let pool=open.filter(k=>!used.includes(k));
+  // word put out for a particular craft fills the dearest place first
+  if(band===bands.length-1&&s.want&&pool.includes(s.want)) pool=[s.want];
+  else if(band===bands.length-1&&bands.length>1){const m=pool.filter(k=>MAKERS.includes(k)); if(m.length&&Math.random()<0.75)pool=m;}
+  if(!pool.length)return null;
+  const k=pool[Math.floor(Math.random()*pool.length)]; used.push(k);
+  const held=s.crew.filter(c=>c.sk===k).reduce((m,c)=>Math.max(m,c.capL||0),0);
+  const mine=myL(s,k);
+  const floor=[0.35,0.7,1.1][band];
+  let L=Math.max(1,Math.round(mine*floor))+band+boost;
+  while(Math.min(MAX_LEVEL,Math.round(L*2.5)+2)<=held&&L<40) L++;                 // never worse than who you have
+  const nm=freeName(s,taken); taken.push(nm);
+  return{name:nm,sk:k,L,capL:Math.min(MAX_LEVEL,Math.round(L*2.5)+2),
+   cost:Math.round((16+13*Math.pow(L,1.6))*(1+s.crew.length*0.75)*RX.hire()*(1-0.15*TIER(s,"gate")))};
+ }).filter(Boolean);
+}
+const seekCost=s=>Math.round(40*Math.pow(2.2,s.seekN||0));
+function seek(){const s=S;const c=seekCost(s);
+ if(s.res.silver<c){toast(`${c} silver to send word`);return;}
+ s.res.silver-=c; const n=(s.seekN||0)+1; rollOffers(); s.seekN=n;
+ log("Word goes out along the shore. The next asking will cost more.","b");maybeDraw();}
+function hire(i){const s=S,o=s.offers[i];if(!o)return;
+ if(s.crew.length>=HALL[s.hall].crew){toast("The hall has no room");return;}
+ if(s.res.silver<o.cost){toast("Not enough silver");return;}
+ s.res.silver-=o.cost;
+ const act=Object.keys(ACT).find(a=>ACT[a].sk===o.sk&&s.unlocked.includes(a));
+ const xp={};xp[o.sk]=xpFor(o.L);
+ s.crew.push({name:o.name,act,sk:o.sk,xp,capL:o.capL,prog:0,eq:blankEq(),away:false});
+ s.used=[...(s.used||[]),o.name];
+ s.ev.hires++;
+ log(`${o.name} joins the hall — ${SK[o.sk]} ${o.L}. It is the only work ${SHE({name:o.name})} knows.`,"g");
+ toast(o.name+" joins");s.offers.splice(i,1);maybeDraw();}
+// what it would cost you to have this again, if you let it burn
+function replaceCost(s,o){
+ if(o.k==="crew"){
+  const c=s.crew[+o.id.slice(1)], L=cL(c,c.sk), cap=c.capL||0;
+  const keepFrac=[0.5,0.65,0.80,0.95][TIER(s,"through")];
+  const arrives=Math.max(1,Math.round(L*keepFrac));
+  // priced exactly as the gate prices it, so the two numbers describe the same person
+  const askFor=L=>Math.round((16+13*Math.pow(L,1.6))*(1+s.crew.length*0.75)*RX.hire()*(1-0.15*TIER(s,"gate")));
+  const gateL=Math.max(1,Math.round(myL(s,c.sk)*1.1))+2;         // the dear slot, at your standing
+  const gateCap=Math.round(gateL*2.5)+2;
+  const sameL=Math.max(1,Math.round((cap-2)/2.5));               // what one of her standing would cost
+  return `arrives as ${SK[c.sk]} ${arrives}, ceiling still ${cap}`
+   +` · one of that ceiling would ask about ${nfm(askFor(sameL))} silver at the gate`
+   +` · the gate's dearest ${SK[c.sk]} today reaches ceiling ${gateCap} for about ${nfm(askFor(gateL))}`;
+ }
+ if(o.k==="lore"){
+  const r=RSCH.find(x=>x.id===o.rec); let sv=0,mins=0;
+  for(let t=0;t<o.tier;t++){ sv+=Math.round(r.silver*Math.pow(2.25,t)); mins+=r.mins*Math.pow(1.55,t); }
+  return `reading this line again from nothing: ${nfm(sv)} silver and ${dur(mins*60000)}`;
+ }
+ if(o.k==="item"){
+  const r=REC.find(x=>x.id===o.rec);
+  const bits=[...Object.entries(r.cost).map(([k,v])=>`${v} ${k}`),...Object.entries(r.comp).map(([k,v])=>`${v} ${CN[k].toLowerCase()}`)];
+  return `to make again: ${bits.join(" · ")||"nothing but skill"}`;
+ }
+ const r=REC.find(x=>x.id===o.rec);
+ return r.learn ? `otherwise worked out again at ${SK[r.learn.sk]} ${r.learn.lv}`
+                : `otherwise only ever shown to you at sea — it cannot be worked out alone`;
+}
+function shelterables(s){
+ const out=[];
+ s.crew.forEach((c,i)=>out.push({k:"crew",id:"c"+i,en:`${c.name} — ${SK[c.sk]} ${cL(c,c.sk)}, ceiling ${c.capL}`,d:"comes through with what is known — the gear burns. Only one may."}));
+ [...ownedIds(s).flatMap(id=>Array(own(s,id)).fill(id)),
+  ...Object.values(s.eq).filter(Boolean),...s.crew.flatMap(c=>Object.values(c.eq).filter(Boolean))]
+  .forEach(id=>{const r=REC.find(x=>x.id===id);if(r&&!out.some(o=>o.rec===id&&o.k==="item"))
+    out.push({k:"item",id:"i"+id,rec:r.id,en:r.en,d:SLOTS[r.slot]});});
+ Object.keys(s.lore).forEach(id=>{const r=RSCH.find(x=>x.id===id);if(!r)return;
+  out.push({k:"lore",id:"l"+id,rec:id,tier:s.lore[id],en:`${r.en} ${ROM[s.lore[id]-1]}`,d:r.eff(s.lore[id])});});
+ s.known.forEach(id=>{const r=REC.find(x=>x.id===id);out.push({k:"way",id:"w"+id,rec:id,en:"How a "+r.en.toLowerCase()+" is made",d:"the knowing of it"});});
+ return out;
+}
+function reckon(){
+ const s=S, keep=shelterables(s).filter(o=>s.picks.includes(o.id));
+ const age=(s.age||0)+1, marks=s.marks||{}, used=s.used;
+ const life={},lev={};
+ [...RES,...COMP].forEach(k=>life[k]=(s.life[k]||0)+(s.tot[k]||0));
+ Object.keys(s.ev).forEach(k=>lev[k]=(s.lev[k]||0)+(s.ev[k]||0));
+ const charges=s.q.ch.map(q=>({...q,base:0}));
+ const keepFrac=[0.5,0.65,0.80,0.95][TIER(s,"through")];
+ const crew=keep.filter(o=>o.k==="crew").slice(0,CREW_THROUGH).map(o=>{const c=s.crew[+o.id.slice(1)];
+  // hiding inside the tree costs her much of what she had learned — the ceiling remains
+  const was=cL(c,c.sk), now=Math.max(1,Math.round(was*keepFrac));
+  const xp={}; xp[c.sk]=xpFor(now);
+  return {name:c.name,act:c.act,sk:c.sk,xp,capL:c.capL,prog:0,eq:blankEq(),away:false,was};});
+ const items={}; keep.filter(o=>o.k==="item").forEach(o=>{items[o.rec]=(items[o.rec]||0)+1;});
+ const lore={};keep.filter(o=>o.k==="lore").forEach(o=>{lore[o.rec]=o.tier;});
+ const ways=keep.filter(o=>o.k==="way").map(o=>o.rec);
+ const won=orlPayout(s);   // leftover silver counts too, but barely
+ const N=fresh();
+ N.age=age; N.marks=marks; N.used=used; N.life=life; N.lev=lev; N.q.ch=charges; N.chDone=s.chDone||[];
+ N.intro=s.intro;        // the road carries on where you left it
+ // and since the road is what opened the crafts, an age that skips it must open them itself
+ N.unlocked=Object.keys(ACT);
+ N.orl=s.orl; N.orlog=(s.orlog||0)+won;
+ N.res.silver=Math.round((s.res.silver||0)*(([0,0.10,0.25,0.45][TIER(s,"hearth")])||0));
+ N.hall=1+TIER(s,"kin");
+ const bl=[0,3,5,8][TIER(s,"blood")]||0;
+ if(bl)Object.keys(SK).forEach(k=>N.xp[k]=xpFor(bl));
+ const hoard=[0,2,5][TIER(s,"hoard")]||0;
+ if(hoard){let left=hoard;
+  // keep the scarcest first — silk before amber, never the other way round
+  [...COMP].sort((a,b)=>RARITY.indexOf(a)-RARITY.indexOf(b)).forEach(k=>{
+   const t=Math.min(left,Math.floor(s.res[k]||0));if(t>0){N.res[k]=t;left-=t;}});}
+ N.crew=crew; N.items=items; N.lore=lore;
+ N.known=[...new Set([...ways,...Object.keys(items)])];   // you remember how to make what you carried through
+ S=N; for(const k in _c)delete _c[k];
+ rollDaily();rollWeekly();rollOffers();
+ S.q.ch=charges;                       // and put them back after the new hall is seeded
+ while(S.q.ch.length<bandCap(S,"ch")){const q=newQ(S,"ch");if(!q)break;S.q.ch.push(q);}
+ lastSig="";
+ log("Fire and water. The hall is gone, the shore is bare.","b");
+ log(`You are richer by ${won} ørlǫg.`,"y");
+ crew.forEach(c=>log(`${c.name} comes out of the tree — ${SK[c.sk]} ${c.was} before, ${cL(c,c.sk)} now, and may still reach ${c.capL}.`,"y"));
+ log(`Age ${age} begins. ${keep.length?"Sheltered: "+keep.map(o=>o.en.split(" —")[0]).join(", ")+".":"You saved nothing."} All work is ${Math.round((RX.age()-1)*100)}% richer.`,"y");
+ toast("Age "+age+" begins");
+ maybeDraw();paint();
+}
+function togglePick(id){const s=S;
+ if(s.picks.includes(id)){s.picks=s.picks.filter(x=>x!==id);lastSig="";maybeDraw();return;}
+ if(id[0]==="c"&&s.picks.filter(x=>x[0]==="c").length>=CREW_THROUGH){
+  toast("Only one of your people can be hidden in the tree");return;}
+ if(s.picks.length>=shelterCap(s)){toast(`Only ${shelterCap(s)} may be sheltered`);return;}
+ s.picks.push(id);lastSig="";maybeDraw();}
+function buyOrl(id){const s=S,u=ORL.find(x=>x.id===id);if(!u||orlMaxed(s,u))return;
+ const c=orlCost(s,u); if(s.orlog<c){toast("Not enough ørlǫg");return;}
+ s.orlog-=c; s.orl[id]=TIER(s,id)+1;
+ if(s.goal===id&&orlMaxed(s,ORL.find(u=>u.id===id)))s.goal=null;
+ if(id==="counsel")topUp(s);
+ log(`${u.en} ${ROM[s.orl[id]-1]} — taken. Now ${u.at(s.orl[id])}.`,"y");toast(u.en+" "+ROM[s.orl[id]-1]);
+ lastSig="";maybeDraw();}
+// who this ought to go to: the right craft, and an empty slot or something worse
+// 2 = fills a gap, 1 = better than what they could already field, 0 = no use to them.
+// Compared craft by craft, so a bog spade is never "an upgrade" on a woodcutting axe.
+function salvageOf(r){const o={};for(const k in r.cost){const n=Math.floor(r.cost[k]*0.4);if(n>0)o[k]=n;}return o;}
+function worth(r){return Object.entries(salvageOf(r)).map(([k,v])=>v+" "+k).join(" · ")||"nothing";}
+function sell(id){const s=S; if(!own(s,id))return;
+ const r=REC.find(x=>x.id===id),o=salvageOf(r);
+ addItem(s,id,-1);
+ for(const k in o) grant(s,k,o[k]);
+ s.ev.sells++;
+ const got=Object.entries(o).map(([k,v])=>v+" "+k).join(", ")||"nothing worth keeping";
+ const lost=Object.keys(r.comp)[0];
+ log(`${r.en} broken down — ${got}.${lost?` The ${CN[lost].toLowerCase()} is lost.`:""}`,"g");
+ toast(got); maybeDraw();}
+let fireArmed=null,fireT=null;
+function dismiss(i){const s=S,c=s.crew[i];if(!c)return;
+ if(fireArmed!==c.name){                       // first tap only arms it
+  fireArmed=c.name; clearTimeout(fireT);
+  fireT=setTimeout(()=>{fireArmed=null;lastSig="";maybeDraw();},4000);
+  toast("Tap again to let "+c.name+" go");lastSig="";maybeDraw();return;
+ }
+ clearTimeout(fireT); fireArmed=null;
+ Object.keys(SLOTS).forEach(sl=>{if(c.eq[sl]) addItem(s,c.eq[sl]);});   // the gear stays
+ s.crew.splice(i,1);
+ log(`${c.name} takes ${HER(c)} leave. What ${SHE(c)} carried is left in the hall.`,"b");
+ toast(c.name+" leaves");maybeDraw();}
+function craft(id){const s=S,r=REC.find(x=>x.id===id);if(!r)return;
+ const owned=own(s,id)
+   +(s.eq[r.slot]===id?1:0)
+   +s.crew.filter(c=>c.eq[r.slot]===id).length;
+ if(owned>=s.crew.length+1){toast("You have one for everybody already");return;}
+ if(myL(s,r.make)<r.lv){toast(`Needs ${SK[r.make]} ${r.lv}`);return;}
+ const cc=k=>Math.max(1,Math.round(r.cost[k]*RX.ore()));
+ for(const k in r.cost)if(s.res[k]<cc(k)){toast("Short of "+k);return;}
+ for(const k in r.comp)if((s.res[k]||0)<r.comp[k]){toast("Needs "+CN[k]);return;}
+ for(const k in r.cost)s.res[k]-=cc(k);
+ for(const k in r.comp)s.res[k]-=r.comp[k];
+ addItem(s,r.id);
+ s.got=[...(s.got||[]),r.id];
+ s.ev.crafts++;
+ log(`${r.en} finished.`,"y");toast(r.en+" made");maybeDraw();}
+function equip(id,who){const s=S; if(!own(s,id))return;
+ const r=REC.find(x=>x.id===id); if(!r)return;
+ const eq=who==="me"?s.eq:s.crew[who].eq;
+ if(eq[r.slot]) addItem(s,eq[r.slot]);
+ eq[r.slot]=r.id; addItem(s,id,-1);
+ log(`${r.en} to ${who==="me"?"you":s.crew[who].name}.`,"g");maybeDraw();}
+function unequip(who,slot){const s=S,eq=who==="me"?s.eq:s.crew[who].eq;
+ if(!eq[slot])return; addItem(s,eq[slot]); eq[slot]=null; maybeDraw();}
+// the best tool you own for a craft, worn or lying in the pile
+function bestToolFor(s,skl){
+ let best=null,v=-1;
+ const worn=s.eq.tool;
+ if(worn){const r=REC.find(x=>x.id===worn); if(r&&r.sk===skl){best={id:worn,worn:true};v=recVal(r);}}
+ ownedIds(s).forEach(id=>{const r=REC.find(x=>x.id===id);
+  if(r&&r.slot==="tool"&&r.sk===skl&&recVal(r)>v){best={id,worn:false};v=recVal(r);}});
+ return best;
+}
+// the best unworn thing in the pile that would better one of the named
+function takeTool(){ const s=S; const a=ACT[s.act]; if(a) reachForTool(s,a.sk,true); maybeDraw(); }
+const autoOn=(s,k)=>((s.auto||{})[k]!==0);
+function reachForTool(s,skl,byHand){
+ if(!byHand&&(!TIER(s,"hand")||!autoOn(s,"hand")))return;
+ const b=bestToolFor(s,skl);
+ if(!b||b.worn)return;
+ if(s.eq.tool) addItem(s,s.eq.tool);
+ s.eq.tool=b.id; addItem(s,b.id,-1);
+ const r=REC.find(x=>x.id===b.id);
+ log(`You take up the ${r.en.toLowerCase()}.`,"g");
+}
+function setAct(k,who){const s=S;
+ if(who==="me"){s.act=k;s.prog=0;reachForTool(s,ACT[k].sk);}
+ else {s.crew[who].act=k;s.crew[who].prog=0;}
+ maybeDraw();}
+const shareOf=(s,p)=>Math.max(0.05,p.share*(1-0.12*TIER(s,"known")));
+const fitOf=(s,p)=>Math.round(p.fit*(1+0.25*(s.age||0))*(1-0.10*TIER(s,"known")));
+function sail(id){const s=S,p=PORTS.find(x=>x.id===id);if(!p||s.voy)return;
+ if(!s.boat){toast("You have no boat");return;}
+ if(s.res.stores<p.stores){toast(`Wants ${p.stores} stores`);return;}
+ if(s.cond<=0){toast("There is nothing left of her to sail");return;}
+ const fit=fitOf(s,p);
+ if(s.res.silver<fit){toast(`${nfm(fit)} silver to fit her out and take a crew`);return;}
+ s.res.silver-=fit;
+s.sailed=[...(s.sailed||[]),id];s.lastPort=id;
+ s.res.stores-=p.stores;
+ const dur=p.mins*60000*VOY_SCALE*RX.voy(); s.voy={id,left:dur,tot:dur};
+ log(`Away on ${p.en.toLowerCase()}.`,"b");maybeDraw();}
+// the hold is decided when she touches the sand, so you can see it before you unload
+function rollHaul(s,id){
+ const p=PORTS.find(x=>x.id===id);
+ const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+ const sv=Math.round((p.silver[0]+Math.random()*(p.silver[1]-p.silver[0]))*(1+luck*0.5)*RX.silver());
+ const comps={};
+ for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*(1+luck))) comps[k]=(comps[k]||0)+1;
+ const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
+ let way=null;
+ // the finer gear is only ever shown to you, never worked out alone — but rarely
+ if(un.length&&Math.random()<Math.min(0.35,0.14+luck*0.10)) way=un[Math.floor(Math.random()*un.length)].id;
+ const wear=p.wear*RX.wear()*(0.85+Math.random()*0.35);
+ return {silver:sv,comps,way,wear,lost:Math.random()<lossChance(s.cond,wear)};
+}
+function haulText(h){
+ const bits=[`${h.silver} silver`];
+ Object.entries(h.comps).forEach(([k,v])=>bits.push(`${v} ${CN[k].toLowerCase()}`));
+ if(h.way)bits.push("a way of making "+REC.find(r=>r.id===h.way).en.toLowerCase());
+ return bits.join(", ");
+}
+function land(){const s=S; if(!s.voy)return;
+ const p=PORTS.find(x=>x.id===s.voy.id);const auto=TIER(s,"tiller")>0&&autoOn(s,"tiller");
+ const h=s.voy.haul||rollHaul(s,s.voy.id);
+ s.voy=null;
+ s.cond=Math.max(0,s.cond-h.wear);
+ if(h.lost){ s.boat=false; s.cond=0; s.lastPort=null; s.voy=null;
+  log("She did not come home. The sea keeps her, and everything in her hold.","bad");
+  toast("The boat is lost"); maybeDraw(); return; }
+ if(s.cond<=0){ s.boat=false; s.cond=0; s.lastPort=null;
+  log("She came apart on the way in. What is left is driftwood — you will have to lay another keel.","bad");
+  toast("The boat is lost"); }
+ const cut=Math.round(h.silver*shareOf(s,PORTS.find(x=>x.id===p.id)));
+ give(s,"silver",h.silver-cut);
+ Object.entries(h.comps).forEach(([k,v])=>give(s,k,v));
+ if(h.way&&!s.known.includes(h.way)){ s.known.push(h.way);
+  log(`Someone shows you how a ${REC.find(r=>r.id===h.way).en.toLowerCase()} is made.`,"y"); }
+ s.voyages=(s.voyages||0)+1; s.ev.voyages++;
+ if(s.cond<35)log("She came home taking water. The strakes want mending.","b");
+ log(`Unloaded — ${haulText(h)}. The crew take ${nfm(cut)} silver as their share.`,"g");
+ toast("Landfall: "+h.silver+" silver");
+ if(auto&&autoOn(s,"tiller")&&s.lastPort){ const q=PORTS.find(x=>x.id===s.lastPort);
+  if(q){
+   let guard=0;
+   while(TIER(s,"caulk")&&autoOn(s,"caulk")&&s.cond<q.wear+10&&guard++<20){
+    const want=Math.min(8,Math.ceil((100-s.cond)/5));
+    const cloth=Math.max(2,Math.round(want*2.2)), stone=want>=6?1:0;
+    if(want<=0||s.res.hull<want||s.res.sailcloth<cloth||(stone&&(s.res.whetstone||0)<stone))break;
+    s.res.hull-=want; s.res.sailcloth-=cloth; if(stone)s.res.whetstone-=stone;
+    s.cond=Math.min(100,s.cond+want*5); s.mends=(s.mends||0)+1; s.ev.mends++;
+   }
+   if(s.res.stores>=q.stores&&s.cond>=q.wear+10) sail(s.lastPort);
+   else log("She wants more than the hall can give her — she stays on the sand.","bad");
+  } }
+ maybeDraw();
+}
+// a hall with meat to spare draws better people than a hall with silver
+const feastCost=s=>10+5*s.crew.length;
+function feast(){const s=S,c=feastCost(s);
+ if(s.res.meals<c){toast(`A feast wants ${c} pots`);return;}
+ s.res.meals-=c; s.feastBoost=3; s.seekN=0; rollOffers();
+ log("Word of a full board travels further than silver. Better folk come to the gate.","good");
+ toast("A feast is held"); maybeDraw();}
+function setTable(quiet){const s=S;
+ const c=tableCost(s);
+ if(s.res.meals<c){toast(`Wants ${c} pot${c>1?"s":""} — one for every mouth`);return;}
+ s.res.meals-=c; s.table=tableMs(s); s.tableMax=s.table; s.tableLift=tableLift(s);
+ s.ev.tables=(s.ev.tables||0)+1;
+ log(`A pot on the board — every hand works ${Math.round(s.tableLift*100)}% harder for ${dur(s.table)}.`,"good");
+ if(!quiet)toast("The table is set");
+ maybeDraw();}
+function mend(){const s=S;const want=Math.min(8,Math.ceil((100-s.cond)/5));
+ const cloth=Math.max(2,Math.round(want*2.2)), stone=want>=6?1:0;
+ if(want<=0){toast("She is sound");return;}
+ if(s.res.hull<want){toast(`Wants ${want} hull — rivet more strakes`);return;}
+ if(s.res.sailcloth<cloth){toast(cloth+" sailcloth to mend her");return;}
+ if(stone&&(s.res.whetstone||0)<stone){toast("An Eidsborg hone to true the rivets");return;}
+ s.res.hull-=want; s.res.sailcloth-=cloth; if(stone)s.res.whetstone-=stone;
+ s.cond=Math.min(100,s.cond+want*5);
+ s.mends=(s.mends||0)+1; s.ev.mends++;
+ log(`Strakes mended. She is at ${Math.round(s.cond)}.`,"g");maybeDraw();}
+const BOAT_HULL=20, BOAT_SAIL=8;
+function buildBoat(){const s=S; if(s.boat)return;
+ if(s.res.hull<BOAT_HULL||s.res.sailcloth<BOAT_SAIL){
+  toast(`Wants ${BOAT_HULL} hull and ${BOAT_SAIL} sailcloth`);return;}
+ s.res.hull-=BOAT_HULL; s.res.sailcloth-=BOAT_SAIL; s.boat=true;
+ log("A boat stands on the sand, sound and tarred.","b");toast("You have a boat");maybeDraw();}
+function upHall(){const s=S,h=HALL[s.hall+1];if(!h)return;
+ const nsk=Object.keys(SK).filter(k=>myL(s,k)>=h.need.sk[1]).length;
+ if(nsk<h.need.sk[0])return;
+ for(const k in h.cost)if(s.res[k]<h.cost[k])return;
+ for(const k in h.cost)s.res[k]-=h.cost[k];s.hall++;
+ log(`The hall is raised to ${s.hall}. Room for ${HALL[s.hall].crew} at your side.`,"b");
+ toast("Hall "+s.hall);maybeDraw();}
+/* ---------------- render ---------------- */
+const _c={};function set(id,h){const e=document.getElementById(id);if(!e)return;if(_c[id]===h)return;_c[id]=h;e.innerHTML=h;}
+const f=n=>n>=100?Math.round(n):(Math.round(n*10)/10).toFixed(1);
+const pct=(a,b)=>Math.max(0,Math.min(100,a/b*100));
+function xpBar(xp){const L=lvl(xp),a=xpFor(L),b=xpFor(L+1);return pct(xp-a,b-a);}
+/* Shown once, on a hall that has not yet been kept. */
+function drawIntro(){
+ const e=document.getElementById("intro"); if(!e)return;
+ if(S.seen){ if(e.style.display!=="none"){e.style.display="none";e.innerHTML="";} return; }
+ if(!e.innerHTML) e.innerHTML=`<div class="in">
+  <pre>            /\\
+          /    \\
+        /        \\
+      /            \\
+    /                \\
+   /__________________\\
+   |   |    <span class="f">/\\</span>    |   |
+   |   |   <span class="f">|~~|</span>   |   |
+   |___|___<span class="f">|__|</span>___|___|</pre>
+  <h1>The Hall</h1>
+  <div class="rule"></div>
+  <p>The men are gone. A voyage that did not come home, and then a winter.</p>
+  <p>What is left is the hall — the stores in it, the flock outside it, and whoever will work for bread and silver.</p>
+  <p>You hold the keys. Everything that is cut, salted, spun or sailed from here is because you set someone to it.</p>
+  <p class="q">Work with your own hands until you can pay for others. Keep enough food that they do not stop. Read what you can afford to read. When the hall can hold no more, call the reckoning and begin again, deeper.</p>
+  <button id="introok" style="width:100%;margin-top:6px">take up the keys</button></div>`;
+ e.style.display="flex";
+}
+function drawAway(){
+ const s=S,e=document.getElementById("away");
+ if(!e)return;
+ if(!s.away){ if(e.style.display!=="none"){e.style.display="none";e.innerHTML="";} return; }
+ const a=s.away, t=a.hrs<1?Math.round(a.hrs*60)+" minutes":a.hrs.toFixed(1)+" hours";
+ const li=[];
+ if(a.gained)li.push(`Brought in <b>${a.gained}</b>`);
+ if(a.rose)li.push(`Rose to <b>${a.rose}</b>`);
+ if(a.lost)li.push(`<span style="color:var(--rust)">Lost <b>${a.lost}</b> for want of room</span>`);
+ if(a.idle&&a.idle.length)li.push(`<span style="color:var(--rust)">${a.idle.join(", ")} stood idle</span>`);
+ if(a.sailed>0)li.push(`The boat came and went <b>${a.sailed}</b> time${a.sailed>1?"s":""}${a.mended>0?`, mended <b>${a.mended}</b> time${a.mended>1?"s":""}`:""}`);
+ if(a.boat==="stores")li.push(`<span style="color:var(--rust)">She sits on the sand — no stores left to provision her</span>`);
+ if(a.boat==="worn")li.push(`<span style="color:var(--rust)">She sits on the sand — too worn, and no hull to mend her</span>`);
+ if(a.boat==="idle")li.push(`<span style="color:var(--rust)">She sits on the sand</span>`);
+ if(a.board==="set")li.push(`The board stayed set${a.meals?`, <b>${nfm(a.meals)}</b> pots left`:""}`);
+ if(a.unpaid)li.push(`<span style="color:var(--rust)">The purse ran empty — your people stopped until there was silver</span>`);
+ if(a.board==="bare")li.push(`<span style="color:var(--rust)">The board went bare — nothing left cooked</span>`);
+ if(a.waiting>0)li.push(`<span style="color:var(--gold)">${a.waiting} piece${a.waiting>1?"s":""} of work waiting to be taken</span>`);
+ if(a.studies>0)li.push(`<span style="color:var(--gold)">${a.studies} reading${a.studies>1?"s":""} finished</span>`);
+ if(a.home)li.push(`<span style="color:var(--gold)">The boat is home and wants unloading</span>`);
+ if(!li.length)li.push("Little changed.");
+ const h=`<div class="in"><h2>You were away ${t}</h2>
+  <div class="note" style="margin-bottom:8px">The hall does not stop when you do.</div>
+  ${li.map(x=>`<div class="li">${x}</div>`).join("")}
+  <button class="take" id="awayok" style="width:100%;margin-top:12px">back to it</button></div>`;
+ if(e.innerHTML!==h){e.innerHTML=h;}
+ e.style.display="flex";
+}
+/* ── the view, one function to a tab ── */
+/* Work — your own labour, your crafts, the annal */
+function view_work(s){
+ let h="";
+ h+=flowCard(s);
+  const R=runner(s,null),a=R&&R.a;
+  if(!R){
+   h+=`<div class="card"><h2>Idle</h2><div class="note">You are standing on the shore doing nothing.
+    Choose a work below and it will run on its own — while you read, and while the app is shut.</div></div>`;
+  } else {
+  const stall=a.use&&!Object.keys(a.use).every(k=>s.res[k]>=a.use[k]);
+  h+=`<div class="card act"><div class="hd"><span class="nm">${a.en}</span><span class="lv">${SK[a.sk]} ${myL(s,a.sk)}</span></div>
+   <div class="sub">${Object.entries(a.out).map(([k,v])=>`+${f(v*R.yld)} ${k}`).join(", ")} every ${R.secs.toFixed(1)}s${a.use?` · uses ${Object.entries(a.use).map(([k,v])=>v+" "+k).join(", ")}`:""}${a.rare?` · sometimes ${(CN[Object.keys(a.rare)[0]]||Object.keys(a.rare)[0]).toLowerCase()}`:""}</div>
+   <div class="bar"><i id="pb" style="width:${stall?0:pct(s.prog,R.secs*1000)}%"></i></div>
+   <div class="bar xp sm"><i id="px" style="width:${xpBar(s.xp[a.sk])}%"></i></div>
+   ${stall?`<div class="sub" style="color:var(--rust)">Stopped — no ${Object.keys(a.use).filter(k=>s.res[k]<a.use[k]).join(", ")}</div>`:""}
+   ${(()=>{
+     const worn=s.eq.tool, wr=worn?REC.find(x=>x.id===worn.rec):null;
+     const b=bestToolFor(s,a.sk);
+     if(b&&!b.worn){ const br=REC.find(x=>x.id===b.id);
+      return `<div class="sub" style="color:var(--gold);margin-top:5px">${
+        wr&&wr.sk!==a.sk ? `You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, which is no use here.`
+        : wr ? `There is a better one in the pile.` : `You are working bare-handed.`
+      } <button data-taketool="1" style="min-height:38px;padding:6px 12px;margin-left:6px">take up the ${br.en.toLowerCase()}</button></div>`; }
+     if(wr&&wr.sk&&wr.sk!==a.sk)
+      return `<div class="sub" style="color:var(--rust);margin-top:5px">You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()} — no use for ${SK[a.sk].toLowerCase()}, and you own nothing better.</div>`;
+     return "";})()}   ${(()=>{const on=onCraft(s,a.sk);if(!on.length)return "";
+    return `<div class="sub" style="color:var(--patina)">${on.map(o=>o.c.name+" — "+SK[a.sk]+" "+cL(o.c,a.sk)+(o.working?"":" (no room)")).join(", ")} also works this.</div>`;})()}
+</div>`;
+  }
+  h+=`<div class="card"><div class="hd"><span class="nm">The board</span><span class="lv">${
+    atTable(s)?dur(s.table)+" left":"nothing set"}</span></div>
+   <div class="sub">${atTable(s)
+     ?`Every hand works ${Math.round((tableBonus(s)-1)*100)}% harder while the pot lasts.`
+     :`Wants ${tableCost(s)} pot${tableCost(s)>1?"s":""} — one for every mouth. At Cooking ${myL(s,"cook")} that is +${Math.round(tableLift(s)*100)}% for ${dur(tableMs(s))}. You have ${nfm(s.res.meals)}.`}</div>
+   ${atTable(s)?`<div class="bar sm"><i id="tbl" style="width:${pct(s.table,s.tableMax||1)}%;background:var(--gold)"></i></div>`:""}
+   <button data-table="1" style="margin-top:8px;width:100%" ${s.res.meals>=tableCost(s)?"":"disabled"}>set the table · ${tableCost(s)}</button>
+   ${TIER(s,"board")?`<button data-auto="board" style="margin-top:6px;width:100%;${autoOn(s,"board")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"board")?"the board sets itself":"setting it yourself"}</button>`:""}</div>`;
+  h+=`<div class="card"><h2>Your work</h2>
+   <div class="note" style="margin-bottom:8px">Most crafts have two hands to them — a steadier rate, or something you cannot get any other way.</div>`+
+   TIERS.map(T=>{
+    const inTier=T.ks.filter(sk=>Object.keys(ACT).some(k=>ACT[k].sk===sk&&s.unlocked.includes(k)));
+    if(!inTier.length)return "";
+    return `<div class="sub" style="color:var(--gold);margin:10px 0 5px;font-variant:small-caps;letter-spacing:.1em">${T.t}</div>`+
+     inTier.map(sk=>{
+    const acts=Object.keys(ACT).filter(k=>ACT[k].sk===sk&&s.unlocked.includes(k));
+    if(!acts.length)return "";
+    const on=onCraft(s,sk);
+    const who=on.length?`<span style="color:${on.every(o=>!o.working)?"var(--rust)":"var(--patina)"}">${
+      on.map(o=>o.c.name+(o.working?(o.c.rest?" — set down":""):" — no room")).join(", ")}</span>`:"";
+    return `<div style="margin-bottom:9px">
+     <div class="sub" style="margin-bottom:4px">${SK[sk]} ${myL(s,sk)}${who?" · "+who:""}</div>
+     <div class="grid">`+acts.map(k=>{const x=ACT[k];
+      const want=x.use&&!Object.keys(x.use).every(r=>s.res[r]>=x.use[r]);
+      return `<button class="pick ${s.act===k?"on":""} ${want?"want":""}" data-act="${k}" data-who="me">
+       <b>${x.en}</b><small>${Object.entries(x.out).map(([r,v])=>"+"+v+" "+r).join(", ")} · ${x.secs}s${
+        x.rare?" · "+Object.keys(x.rare)[0]:""}</small>${
+        x.use?`<span class="who">uses ${Object.entries(x.use).map(([r,v])=>v+" "+r).join(", ")}</span>`:""}</button>`;}).join("")
+     +`</div></div>`;}).join("");}).join("")
+   +`${s.unlocked.length<19?`<div class="note" style="margin-top:4px">More work opens as you go.</div>`:""}
+   ${TIER(s,"hand")?`<button data-auto="hand" style="margin-top:8px;width:100%;${autoOn(s,"hand")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"hand")?"tools come to hand":"you change tools yourself"}</button>`:""}</div>`;
+  const cap=softCap(s);
+  h+=`<div class="card"><h2>Skills <span class="sub mono">the hall holds ${cap}</span></h2>
+   <div class="note" style="margin-bottom:6px">Past that you still rise, at a quarter the pace, to a hundred at the most.</div>`+
+   Object.keys(SK).map(k=>{const L=myL(s,k),held=L>=cap;
+   const max=L>=MAX_LEVEL;
+   return `<div class="row"><span>${SK[k]}${max?` <span class="sub" style="color:var(--patina)">mastered</span>`:held?` <span class="sub" style="color:var(--rust)">held back</span>`:""}</span><span class="lv mono" style="color:${max?"var(--patina)":held?"var(--rust)":"var(--gold)"}">${L}</span></div>
+    <div class="bar xp sm"><i id="sx_${k}" style="width:${xpBar(s.xp[k])}%;background:${held?"var(--rust)":""}"></i></div>`;}).join("")+`</div>`;
+  h+=`<div class="card"><h2>Annal</h2><div id="log">`+s.log.map(e=>`<div class="${e.c}">${e.t}</div>`).join("")+`</div></div>`;
+ 
+ return h;
+}
+/* Crew — the named, and who waits at the gate */
+/* What is moving, and who is standing still. Tap a store for where it comes from. */
+function flowCard(s){
+ const {f,idle}=flows(s), cap=capOf(s);
+ const rows=[...RES,...COMP].filter(k=>f[k]&&(f[k].in>0.01||f[k].out>0.01));
+ const sel=s.flow&&f[s.flow]?s.flow:null;
+ let h=`<div class="card"><div class="hd" data-sect="flow" style="cursor:pointer;user-select:none">
+   <span class="nm">What is moving</span>
+   <span class="lv">${idle.length?`<span style="color:var(--rust)">${idle.length} standing idle</span>`:`<span style="color:var(--patina)">all hands at work</span>`}
+    <span style="color:var(--dim)">${isShut(s,"flow",false)?"▸":"▾"}</span></span></div>`;
+ if(isShut(s,"flow",false)) return h+`</div>`;
+ if(!rows.length) h+=`<div class="note">Nothing is moving. Choose a work.</div>`;
+ h+=rows.map(k=>{
+  const x=f[k], net=x.net, full=cap[k]&&s.res[k]>=cap[k]-0.5;
+  const till=net>0.01&&cap[k]?(cap[k]-s.res[k])/net:net<-0.01?s.res[k]/-net:null;
+  const note = k==="silver"
+   ? `<span style="color:var(--dim)">wages, paid as the work is done — silver comes in when you take work or land a voyage</span>`
+   : full?`<span style="color:var(--gold)">full — what comes in is lost</span>`
+   : till!==null&&till<600?`<span style="color:${net>0?"var(--dim)":"var(--rust)"}">${net>0?"full":"empty"} in ${dur(till*60000)}</span>`:"&nbsp;";
+  return `<div class="row" data-flow="${k}" style="cursor:pointer;${sel===k?"border-left:2px solid var(--gold);padding-left:8px;margin-left:-10px":""}">
+   <span>${CN[k]||k[0].toUpperCase()+k.slice(1)}
+    <div class="sub">${note}</div></span>
+   <span class="mono" style="color:${net>0.01?"var(--patina)":net<-0.01?"var(--rust)":"var(--dim)"}">${net>0?"+":""}${net.toFixed(1)}/min</span></div>`
+   +(sel===k?`<div class="sub" style="margin:2px 0 7px 6px">${
+     x.from.map(v=>`<span style="color:var(--patina)">${v.who} +${v.n.toFixed(1)}</span>`).concat(
+     x.to.map(v=>`<span style="color:var(--rust)">${v.who} −${v.n.toFixed(1)}</span>`)).join(" · ")}</div>`:"");
+ }).join("");
+ if(idle.length) h+=`<div class="sub" style="margin-top:7px;color:var(--rust)">${
+   idle.map(i=>`${i.who} — ${i.why}`).join(" · ")}</div>`;
+ return h+`</div>`;
+}
+function view_crew(s){
+ let h="";
+  h+=`<div class="card"><h2>You</h2>${eqHtml(s.eq,"me")}</div>`;
+  s.crew.forEach((c,i)=>{const r=runner(s,c);
+   const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]);
+   const capped=cL(c,r.a.sk)>=(c.capL||99);
+   const noRoom=i>=HALL[s.hall].crew;
+   h+=`<div class="card"><div class="hd"><span class="nm">${c.name}</span><span class="lv">${SK[r.a.sk]} ${cL(c,r.a.sk)} / ${c.capL||"?"}</span></div>
+    <div class="sub">${r.a.en} — ${Object.entries(r.a.out).map(([k,v])=>`+${f(v*r.yld)} ${k}`).join(", ")} / ${r.secs.toFixed(1)}s${r.a.use?` · uses ${Object.entries(r.a.use).map(([k,v])=>v+" "+k).join(", ")}`:""}</div>
+    <div class="bar"><i id="cb${i}" style="width:${c.away?0:pct(c.prog,r.secs*1000)}%"></i></div>
+    <div class="bar xp sm"><i id="cx${i}" style="width:${xpBar(c.xp[r.a.sk]||0)}%"></i></div>
+    ${(()=>{const acts=Object.keys(ACT).filter(k=>ACT[k].sk===r.a.sk&&s.unlocked.includes(k));
+      if(acts.length<2)return "";
+      return `<div class="give" style="max-width:100%;justify-content:flex-start;margin-top:7px">`+
+       acts.map(k=>{const x=ACT[k];
+        return `<button data-act="${k}" data-who="${i}" style="${c.act===k?"border-top-color:var(--gold);color:var(--gold)":"opacity:.55"}">${x.en}</button>`;}).join("")
+       +`</div>`;})()}
+    ${noRoom?`<div class="sub" style="color:var(--rust)">No room under the roof — ${SHE(c)} does nothing until the hall is raised.</div>`
+      :stall?`<div class="sub" style="color:var(--rust)">Standing idle — no ${Object.keys(r.a.use).filter(k=>s.res[k]<r.a.use[k]).join(", ")}</div>`:""}
+    ${(()=>{const A=allot(s);
+      const want=Object.keys(SLOTS).map(sl=>A.need[i+"|"+sl]).filter(nd=>nd&&nd.wants);
+      if(!want.length)return "";
+      return want.map(nd=>{const r=REC.find(x=>x.id===nd.wants);
+       const wr=nd.worn?REC.find(x=>x.id===nd.worn):null;
+       return `<div class="sub" style="color:var(--gold);margin-top:5px">${
+         wr&&wr.sk&&wr.sk!==c.sk ? `${Cap(SHE(c))} is holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, which is no use to ${HIM(c)}.`
+         : wr ? `A better ${SLOTS[nd.slot].toLowerCase()} waits in the hall.`
+         : `${Cap(HER(c))} ${SLOTS[nd.slot].toLowerCase()} slot is empty.`}
+        <button data-eq="${r.id}" data-w="${i}" style="min-height:38px;padding:6px 12px;margin-left:6px">give ${HIM(c)} the ${r.en.toLowerCase()}</button></div>`;}).join("");})()}
+    <div class="row" style="padding-top:5px"><span class="sub">${c.rest?`Set down — eating a third, earning nothing`:`At work`}</span>
+     <button data-rest="${i}" style="min-height:38px;padding:6px 12px;${c.rest?"border-color:var(--gold);color:var(--gold)":"opacity:.6"}">${c.rest?"take her up":"set her down"}</button></div>
+    <div class="sub" style="margin-top:4px">${capped?`${Cap(SHE(c))} has learned all ${SHE(c)} ever will.`:`This is the only work ${SHE(c)} knows.`}${
+      myL(s,r.a.sk)<cL(c,r.a.sk)
+        ? ` <span style="color:var(--patina)">Teaching you — your ${SK[r.a.sk]} ${myL(s,r.a.sk)} of ${HER(c)} ${cL(c,r.a.sk)}.</span>`
+        : ` <span style="color:var(--dim)">You have nothing left to learn from ${HIM(c)}.</span>`}</div>
+    ${eqHtml(c.eq,i)}
+    <button data-fire="${i}" style="margin-top:9px;width:100%;font-size:11.5px;min-height:46px;${
+      fireArmed===c.name?"border-color:var(--rust);color:var(--rust);opacity:1"
+                        :"opacity:.4"}">${fireArmed===c.name?`really let ${c.name} go?`:`let ${c.name} go`}</button></div>`;});
+  h+=`<div class="card"><h2>At the gate</h2>`+
+   (s.crew.length>=HALL[s.hall].crew?`<div class="note">The hall has room for ${HALL[s.hall].crew}. Raise it for more.</div>`:"")+
+   s.offers.map((o,i)=>`<div class="row"><span>${o.name}<div class="sub">${SK[o.sk]} ${o.L} — ${ACT[Object.keys(ACT).find(a=>ACT[a].sk===o.sk)].en.toLowerCase()}, and nothing else</div>
+    <div class="sub" style="color:var(--dim)">will reach ${SK[o.sk]} ${o.capL} and no further · teaches you to the same</div></span>
+    <button data-hire="${i}" ${s.res.silver>=o.cost&&s.crew.length<HALL[s.hall].crew?"":"disabled"} style="${s.res.silver>=o.cost?"":"color:var(--rust);border-color:var(--rust)"}">${o.cost} silver</button></div>`).join("")+
+   `<div class="note" style="margin-top:6px">New folk pass by in <span id="ocd">${dur(s.offerT)}</span>. They come better as you do.</div>
+    <div class="sub" style="margin-top:7px">Put word out for a particular craft — the dearest place at the gate will be one:</div>
+    <div class="give" style="max-width:100%;justify-content:flex-start;margin-top:5px">${
+      Object.keys(SK).filter(k=>s.unlocked.some(u=>ACT[u].sk===k)).map(k=>
+       `<button data-want="${k}" style="${s.want===k?"border-color:var(--gold);color:var(--gold)":"opacity:.55"}">${SK[k]}</button>`).join("")}</div>
+    <div class="opt" style="margin-top:7px"><span>Hold a feast <span class="c">${feastCost(s)} pots · draws far better folk at once</span></span>
+     <button data-feast="1" ${s.res.meals>=feastCost(s)?"":"disabled"}>hold it</button></div>
+    <button data-seek="1" style="margin-top:7px;width:100%" ${s.res.silver>=seekCost(s)?"":"disabled"}>send word along the shore — ${seekCost(s)} silver</button></div>`;
+  const A=allot(s), spare=A.spare;
+ 
+ return h;
+}
+/* Craft — what you know how to make, and what is spare */
+function view_craft(s){
+ let h="";
+ const mk=makeableNow(s); s.craftSeen=mk.slice();
+ const nowSk=s.act?ACT[s.act].sk:null;
+ const A=allot(s), spare=A.spare;
+
+ /* one row for a way of making */
+ const row=r=>{
+  const okl=myL(s,r.make)>=r.lv;
+  const tok=[{t:`${SK[r.make]} ${r.lv}`,ok:okl}];
+  Object.entries(r.cost).forEach(([k,v])=>{const need=Math.max(1,Math.round(v*RX.ore()));
+   tok.push({t:`${need} ${k}`,ok:s.res[k]>=need});});
+  Object.entries(r.comp).forEach(([k,v])=>tok.push({t:`${v} ${CN[k].toLowerCase()}`,ok:(s.res[k]||0)>=v}));
+  const can=tok.every(x=>x.ok);
+  const line=tok.map(x=>`<span style="color:${x.ok?"var(--patina)":"var(--rust)"}">${x.t}</span>`)
+    .join('<span style="color:var(--dim)"> · </span>');
+  const worth=mk.includes(r.id), forNow=worth&&r.sk&&r.sk===nowSk;
+  const edge=forNow?"var(--frost)":worth?"var(--patina)":null;
+  return `<div class="row" style="${edge?`border-left:2px solid ${edge};padding-left:8px;margin-left:-10px`:""}">
+   <span>${r.en}${forNow?` <span class="tag" style="border-color:var(--frost);color:var(--frost)">for the work you are on</span>`
+     :worth?` <span class="tag" style="border-color:var(--patina);color:var(--patina)">worth making</span>`:""}
+   <div class="sub">${Object.entries(r.bonus).map(([k,v])=>`+${Math.round(v*100)}% ${k}`).join(", ")}</div>
+   <div class="sub">${line}</div></span>
+   <button class="${worth?"take":""}" data-craft="${r.id}" ${can?"":"disabled"}>make</button></div>`;
+ };
+ const unknownNote=list=>{
+  const unk=list.filter(r=>!s.known.includes(r.id));
+  if(!unk.length)return "";
+  const byHand=unk.filter(r=>r.learn).length;
+  return `<div class="sub" style="margin-top:5px;color:var(--dim)">${unk.length} still unknown — ${
+    byHand===unk.length?"worked out by getting good at the craft"
+    :byHand===0?"the finer sort, only ever shown to you at sea"
+    :`${byHand} by skill, ${unk.length-byHand} only shown to you at sea`}.</div>`;
+ };
+
+ /* tools, gathered under the craft they serve */
+ h+=`<div class="note" style="margin-bottom:7px">Tools, by the craft they serve. <span style="color:var(--patina)">●</span> marks one holding something worth making.</div>`;
+ Object.keys(SK).forEach(sk=>{
+  const list=REC.filter(r=>r.slot==="tool"&&r.sk===sk).sort((a,b)=>a.lv-b.lv);
+  if(!list.length)return;
+  const known=list.filter(r=>s.known.includes(r.id));
+  const hot=list.some(r=>mk.includes(r.id));
+  const body=known.map(row).join("")+unknownNote(list);
+  // only the craft you are on opens itself; the rest carry a mark and stay folded
+  h+=sect(s,"t_"+sk,SK[sk]+(sk===nowSk?` <span class="tag" style="border-color:var(--frost);color:var(--frost)">your work</span>`:""),
+    (hot?`<span style="color:var(--patina)">●</span> `:"")+`${known.length}/${list.length}`,
+    body, sk===nowSk);
+ });
+
+ /* the other three slots */
+ ["garment","rune","amulet"].forEach(sl=>{
+  const list=REC.filter(r=>r.slot===sl).sort((a,b)=>a.lv-b.lv);
+  const known=list.filter(r=>s.known.includes(r.id));
+  const hot=list.some(r=>mk.includes(r.id));
+  h+=sect(s,"s_"+sl,SLOTS[sl],(hot?`<span style="color:var(--patina)">●</span> `:"")+`${known.length}/${list.length}`,
+    known.map(row).join("")+unknownNote(list), false);
+ });
+
+ if(itemCount(s)) h+=sect(s,"unworn","In the hall",
+  `${itemCount(s)} piece${itemCount(s)>1?"s":""} · ${Object.values(spare).reduce((a,b)=>a+b,0)} spare`,
+  ownedIds(s).map(id=>REC.find(x=>x.id===id)).sort((a,b)=>
+    (a.slot===b.slot?0:Object.keys(SLOTS).indexOf(a.slot)-Object.keys(SLOTS).indexOf(b.slot))||recVal(b)-recVal(a))
+   .map(r=>{const n=own(s,r.id), sp=spare[r.id]||0;
+    return `<div class="row"><span>${r.en} <span class="mono sub">×${n}</span>${
+      sp>=n?` <span class="tag" style="border-color:var(--dim)">spare</span>`
+      :sp?` <span class="tag" style="border-color:var(--dim)">${sp} spare</span>`
+      :` <span class="tag" style="border-color:var(--patina);color:var(--patina)">wanted</span>`}
+     <div class="sub">${SLOTS[r.slot]}${r.sk?" · "+SK[r.sk]:""}</div></span>
+    <button class="${sp?"":"swap"}" data-sell="${r.id}">break down · ${worth(r)}</button></div>`;}).join("")
+  +`<div class="note" style="margin-top:5px">Give them out by tapping a slot on the Crew tab. Breaking one down returns two fifths of the metal or cloth; the rare thing is lost.</div>`,
+  Object.keys(spare).length>0);
+
+ h+=sect(s,"rare","Rare things",COMP.filter(k=>s.res[k]>0).length+" of "+COMP.length+" in hand",
+  COMP.map(k=>`<div class="row"><span>${CN[k]}</span><span class="mono">${s.res[k]||0}</span></div>`).join("")
+  +`<div class="note" style="margin-top:6px">These cannot be made. Only found, traded, or taken.</div>`, false);
+ return h;
+}
+function view_sea(s){
+ let h="";
+  if(!s.boat){
+   h+=`<div class="card"><h2>The keel</h2><div class="sub">Hull <span id="ht">${f(s.res.hull)}</span> / 20</div>
+    <div class="bar"><i id="hb" style="width:${pct(s.res.hull,20)}%"></i></div>
+    <div class="note" style="margin-top:7px">${s.unlocked.includes("rivet")?`She wants ${BOAT_HULL} hull and ${BOAT_SAIL} sailcloth.`:"You do not yet know how a strake is riveted."}</div>
+    <button data-boat="1" style="margin-top:8px;width:100%" ${s.res.hull>=20?"":"disabled"}>launch her</button></div>`;
+  } else if(s.voy&&s.voy.home){const p=PORTS.find(x=>x.id===s.voy.id);
+   h+=pilotCard(s);
+   h+=`<div class="card" style="border-color:var(--patina)"><div class="hd"><span class="nm">${p.en}</span><span class="lv">home</span></div>
+    <div class="sub">${haulText(s.voy.haul||{silver:0,comps:{}})}</div>
+    <button class="take" data-land="1" style="margin-top:9px;width:100%">unload her</button></div>`;
+  } else if(s.voy){const p=PORTS.find(x=>x.id===s.voy.id);
+   h+=pilotCard(s);
+   h+=`<div class="card"><div class="hd"><span class="nm">The boat</span><span class="lv">${Math.round(s.cond)} / 100</span></div>
+    <div class="bar sm"><i id="cnd" style="width:${s.cond}%;background:${s.cond<35?"var(--rust)":"var(--patina)"}"></i></div></div>`;
+   h+=`<div class="card act"><h2>${p.en}</h2><div class="sub"><span id="vt">${dur(s.voy.left)}</span> until the sand</div>
+    <div class="bar"><i id="vb" style="width:${pct(s.voy.tot-s.voy.left,s.voy.tot)}%"></i></div></div>`;
+  } else {
+   const want=Math.min(8,Math.ceil((100-s.cond)/5));
+   h+=`<div class="card"><div class="hd"><span class="nm">The boat</span><span class="lv">${Math.round(s.cond)} / 100</span></div>
+    <div class="bar sm"><i id="cnd" style="width:${s.cond}%;background:${s.cond<35?"var(--rust)":"var(--patina)"}"></i></div>
+    <div class="sub" style="margin-top:6px">${s.cond>=99?"Sound and tarred.":`Mending wants ${want} hull — you have ${f(s.res.hull)}. Rivet strakes to make more.`}</div>
+    <button data-mend="1" style="margin-top:7px;width:100%" ${s.cond<99&&s.res.hull>=want?"":"disabled"}>mend her</button></div>`;
+   h+=pilotCard(s);
+   if(s.cond<25) h+=`<div class="card" style="border-color:var(--rust)"><div class="hd"><span class="nm">She is failing</span><span class="lv" style="color:var(--rust)">${Math.round(s.cond)}</span></div>
+    <div class="sub">Below twenty-five she may not come home at all. Mend her before you send her out.</div></div>`;
+   h+=`<div class="card"><h2>Where to</h2>`+PORTS.map(p=>{
+    const can=s.res.stores>=p.stores&&s.cond>=p.wear+10;
+    const fit=fitOf(s,p), sh=shareOf(s,p);
+    const why=`<span style="color:${s.res.stores>=p.stores?"var(--patina)":"var(--rust)"}">${p.stores} stores</span>`
+     +`<span style="color:var(--dim)"> · </span><span style="color:${s.res.silver>=fit?"var(--patina)":"var(--rust)"}">${nfm(fit)} to fit out</span>`
+     +`<span style="color:var(--dim)"> · they take ${Math.round(sh*100)}%</span>`;
+    return `<div class="row"><span>${p.en}
+     <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · ${why} · ${(()=>{
+       const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+       const m=(1+luck*0.5)*RX.silver();
+       return `${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver`;})()}</div>
+     <div class="sub">costs her ${Math.round(p.wear*RX.wear())} condition${(()=>{
+       const risk=lossChance(s.cond,p.wear*RX.wear());
+       return risk>0?` · <span style="color:var(--rust)">${Math.round(risk*100)}% she is lost</span>`:"";})()} · ${Object.keys(p.comp).map(k=>{
+       const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+       const ch=Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100);
+       return `<span class="tag amber">${CN[k]} ${ch}%</span>`;}).join("")}</div></span>
+     <button data-sail="${p.id}" ${can?"":"disabled"}>sail</button></div>`;}).join("")+`</div>`;
+  }
+ 
+ return h;
+}
+/* Lore — what is being read, and what may be */
+function view_lore(s){
+ let h="";
+  h+=`<div class="card"><div class="hd"><span class="nm">Lore</span><span class="lv">rank ${loreRank(s)} · reading ${s.studies.length}/${studySlots(s)}</span></div>`;
+  if(s.studies.length) h+=s.studies.map((st,i)=>{const r=RSCH.find(x=>x.id===st.id);
+    if(st.ready) return `<div class="q ready" style="margin-top:8px"><div class="row" style="padding:0">
+      <span><span class="t">${r.en} ${ROM[LT(s,r.id)]}</span>
+       <div class="sub">${r.eff(LT(s,r.id)+1)}</div></span>
+      <button class="take" data-lore="${i}">take it</button></div></div>`;
+    return `<div style="margin-top:8px"><div class="sub">${r.en} ${ROM[LT(s,r.id)]} — <span id="lcd${i}">${dur(st.left)}</span></div>
+     <div class="bar sm"><i id="lb${i}" style="width:${pct(st.tot-st.left,st.tot)}%"></i></div></div>`;}).join("");
+  else h+=`<div class="note" style="margin-top:6px">Nothing is being read. Reading goes on while you work, and while the app is shut.</div>`;
+  h+=`</div>`;
+  ["Forge lore","Sea lore","Hall lore"].forEach(br=>{
+   const list=RSCH.filter(r=>r.br===br);
+   const bodyRows=list.map(r=>{
+    const t=LT(s,r.id), maxed=loreMax(s,r), reading=s.studies.some(x=>x.id===r.id);
+    const gated=!maxed&&loreRank(s)<r.rank;
+    const c=loreCost(s,r);
+    const tok=Object.entries(c).map(([k,v])=>({t:`${v} ${CN[k]?CN[k].toLowerCase():k}`,ok:(s.res[k]||0)>=v}));
+    const line=tok.map(x=>`<span style="color:${x.ok?"var(--patina)":"var(--rust)"}">${x.t}</span>`)
+      .join('<span style="color:var(--dim)"> \u00b7 </span>');
+    const can=!maxed&&!gated&&!reading&&s.studies.length<studySlots(s)&&tok.every(x=>x.ok);
+    const foot = maxed ? `<span style="color:var(--patina)">read to the end</span>`
+      : reading ? `<span style="color:var(--frost)">being read now</span>`
+      : gated ? `<span style="color:var(--rust)">wants rank ${r.rank}, you are ${loreRank(s)}</span>`
+      : `<span style="color:var(--dim)">${loreMins(s,r)} min</span><span style="color:var(--dim)"> \u00b7 </span>${line}`;
+    return `<div class="row" style="${maxed?"opacity:.55":""}"><span>${r.en}${t?` <span class="mono" style="color:var(--gold)">${ROM[t-1]}</span>`:""}
+     <div class="sub">${maxed?r.eff(t):r.eff(Math.min(r.tiers,t+1))}</div>
+     <div class="sub">${foot}</div></span>
+     ${maxed?"":`<button data-study="${r.id}" ${can?"":"disabled"}>read</button>`}</div>`;}).join("");
+   const have=list.reduce((a,r)=>a+LT(s,r.id),0), all=list.reduce((a,r)=>a+r.tiers,0);
+   const readable=list.some(r=>loreOpen2(s,r)&&Object.entries(loreCost(s,r)).every(([k,v])=>(s.res[k]||0)>=v));
+   h+=sect(s,"lore_"+br.replace(/\s/g,""),br,`${have}/${all}`+(readable?` <span style="color:var(--patina)">·</span>`:""),
+     bodyRows+`<div class="bar sm" style="margin-top:7px"><i style="width:${have/all*100}%;background:var(--gold)"></i></div>`,
+     readable);
+  });
+ 
+ return h;
+}
+/* Tasks — the four bands, the road, and the marks */
+function view_quest(s){
+ let h="";
+  const iq=INTRO[s.intro];
+  h+=`<div class="card" style="${introReady(s)?"border-color:var(--gold)":""}">
+   <h2>The way on <span class="sub mono">${Math.min(s.intro+1,INTRO.length)} of ${INTRO.length}</span></h2>`+
+   (iq?(()=>{ const v=Math.min(iq.n,iq.val(s)), rdy=introReady(s);
+     const rw=Object.entries(iq.r).map(([k,x])=>k==="comp"?CN[x]:`${x} ${k}`).join(" · ");
+     return `<div class="q ${rdy?"ready":""}"><div class="t">${iq.t}</div>
+      ${iq.n>1?`<div class="p">${nfm(v)} / ${nfm(iq.n)}</div>
+      <div class="bar sm"><i id="ib" style="width:${pct(v,iq.n)}%"></i></div>`:""}
+      <div class="row" style="padding-top:5px"><span class="r">${rw}</span>
+       ${rdy?`<button class="take" data-intro="1">take it</button>`:""}</div></div>`;})()
+    :`<div class="note">The road is walked. Everything now is of your own choosing.</div>`)+
+   `<div class="bar sm" style="margin-top:6px"><i style="width:${s.intro/INTRO.length*100}%;background:var(--frost)"></i></div></div>`;
+  const bandCard=(b)=>{
+   const cap=bandCap(s,b), list=s.q[b];
+   const full=list.length>=cap;
+   const wait=!BAND[b].every?`<span class="mono sub">stands through the fire</span>`
+    :full?`<span class="mono sub" style="color:var(--gold)">full — take some</span>`
+    :`<span class="mono sub">next in <span id="cd${b}">${dur(BAND[b].every-s.qt[b])}</span></span>`;
+   let out=list.length?"":`<div class="note">Nothing waiting. Work gathers while you are away.</div>`;
+   out+=list.map((q,i)=>{
+    const pv=Math.min(q.n,trackVal(s,q.tr)-q.base);
+    const pay = b==="er"?`${q.pay.n} ${q.pay.res}${q.silver?" · "+q.silver+" silver":""}`
+      : b==="dy"?`${q.silver} silver`
+      : b==="ch"?`${q.orlog} ørlǫg`
+      : `choose one of three: ${liveChoices(s,q).map(choiceLabel).join(" · ")}`;
+    let foot;
+    if(q.done&&b==="se"){
+     foot=`<div class="give" style="max-width:100%;justify-content:flex-start;margin-top:6px">`+
+      liveChoices(s,q).map((c,ci)=>
+       `<button class="take" data-coll="${b}|${i}|${ci}" style="text-align:left">${choiceLabel(c)}</button>`).join("")+`</div>`;
+    } else {
+     foot=`<div class="row" style="padding-top:5px"><span class="r">${pay}</span>`+
+      (q.done?`<button class="take" data-coll="${b}|${i}|0">take it</button>`
+        :b==="ch"?"":`<button class="swap" data-rr="${b}|${i}" ${s.res.silver>=rerollCost(s)?"":"disabled"}>swap · ${rerollCost(s)}</button>`)+`</div>`;
+    }
+    return `<div class="q ${q.done?"ready":""}"><div class="t">${q.t}</div>
+     <div class="p"><span id="qp${b}${i}">${nfm(pv)}</span> / ${nfm(q.n)}</div>
+     <div class="bar sm"><i id="qb${b}${i}" style="width:${pct(pv,q.n)}%"></i></div>${foot}</div>`;}).join("");
+   return sect(s,"band_"+b,BAND[b].en,`${list.length}/${cap} ${wait}`,out,true);
+  };
+  ["er","dy","se","ch"].forEach(b=>{h+=bandCard(b);});
+  const rows=MARK.map(m=>{
+   const done=markDone(s,m),ready=markReady(s,m),t=markTier(s,m);
+   const val=markVal(s,m),next=markNext(s,m);
+   return {m,done,ready,t,val,next,frac:done?1:Math.min(1,val/next)};
+  }).sort((a,b)=>(b.ready-a.ready)||(a.done-b.done)||(b.frac-a.frac));
+  const nr=rows.filter(r=>r.ready).length;
+  const taken=rows.reduce((a,r)=>a+r.t,0), total=MARK.reduce((a,m)=>a+m.tiers.length,0);
+  h+=sect(s,"marks","Marks",`${taken} of ${total} taken`,
+   (nr?`<div class="note" style="color:var(--gold);margin-bottom:7px">${nr} waiting to be taken.</div>`:"")+
+   rows.map(r=>{const m=r.m;
+    if(r.done) return `<div class="q done" style="border-left-color:var(--patina)">
+      <div class="row" style="padding:0"><span><span class="t">${m.t} ${ROM[m.tiers.length-1]}</span>
+       <div class="sub">every tier taken · ${nfm(r.val)} ${m.d}</div></span></div></div>`;
+    const rw=markReward(s,m);
+    return `<div class="q ${r.ready?"ready":""}" style="${r.ready?"":"border-left-color:var(--line)"}">
+     <div class="row" style="padding:0"><span><span class="t">${m.t} ${ROM[r.t]}</span>
+      <div class="sub">${nfm(r.val)} / ${nfm(r.next)} ${m.d}</div></span>
+      ${r.ready?`<button class="take" data-mark="${m.id}">take it</button>`
+        :`<span class="sub" style="color:var(--gold)">${rw.silver?rw.silver+" silver":rw.orlog+" ørlǫg"}</span>`}</div>
+     <div class="bar sm"><i style="width:${r.frac*100}%;background:${r.ready?"var(--patina)":"var(--gold)"}"></i></div></div>`;}).join(""), nr>0);
+ 
+ return h;
+}
+/* Hall — stores, ørlǫg, the reckoning, and keeping a copy */
+function view_hall(s){
+ let h="";
+  if(s.picking){
+   const cap=shelterCap(s),list=shelterables(s);
+   h+=`<div class="card act"><h2>What comes through the fire</h2>
+    <div class="note">Líf and Lífþrasir hid inside the tree and the world came back greener.
+    Choose ${cap} thing${cap>1?"s":""}. Everything else is lost — skills, silver, the hall, the boat.</div>
+    <div class="sub" style="margin-top:7px;color:var(--gold)">${s.picks.length} of ${cap} chosen · this reckoning leaves you ${orlPayout(s)} ørlǫg</div>
+    ${(()=>{const n=[0,2,5][TIER(s,"hoard")]||0;if(!n)return "";
+      let left=n,keep=[];
+      [...COMP].sort((a,b)=>RARITY.indexOf(a)-RARITY.indexOf(b)).forEach(k=>{
+       const t=Math.min(left,Math.floor(s.res[k]||0));if(t>0){keep.push(t+" "+CN[k].toLowerCase());left-=t;}});
+      return `<div class="sub" style="color:var(--patina)">The rune-hoard carries ${keep.length?keep.join(", "):"nothing — you hold no rare things"} besides.</div>`;})()}
+    <div class="row" style="margin-top:8px">
+     <button id="cancelrag" style="flex:1">not yet</button>
+     <button id="dorag" style="flex:1;border-color:var(--rust);color:var(--rust)">let it come</button></div></div>`;
+   ["crew","item","lore","way"].forEach(kind=>{
+    const g=list.filter(o=>o.k===kind); if(!g.length)return;
+    const title={crew:"Your people",item:"Things you have made",lore:"Lore",way:"Ways of making"}[kind];
+    h+=`<div class="card"><h2>${title}</h2>`+g.map(o=>{
+     const on=s.picks.includes(o.id);
+     return `<div class="row"><span style="${on?"":"opacity:.7"}">${on?"✓ ":""}${o.en}
+      <div class="sub">${o.d}</div>
+      <div class="sub" style="color:var(--gold)">${replaceCost(s,o)}</div></span>
+      <button data-pick="${o.id}" style="min-height:46px;padding:8px 16px;${on?"border-color:var(--gold);color:var(--gold)":""}">${on?"keep":"take"}</button></div>`;}).join("")+`</div>`;});
+   return h;   // the shelter screen replaces the whole tab
+  }
+  const nx=HALL[s.hall+1];
+  h+=`<div class="card"><h2>Hall — level ${s.hall}</h2>
+   <div class="row"><span>Room at your side</span><span class="mono">${s.crew.length} / ${HALL[s.hall].crew}</span></div>
+   <div class="row"><span>Stores hold</span><span class="mono">×${HALL[s.hall].capx}</span></div>`;
+  if(nx){const nsk=Object.keys(SK).filter(k=>myL(s,k)>=nx.need.sk[1]).length;
+   h+=`<div class="sub" style="margin-top:9px;color:var(--patina)">Raising it gives room for ${nx.crew} at your side (now ${HALL[s.hall].crew}) and stores ×${nx.capx}.</div>`;
+   const rs=[{t:`${nx.need.sk[0]} skills at level ${nx.need.sk[1]}`,ok:nsk>=nx.need.sk[0],now:`${nsk}/${nx.need.sk[0]}`},
+    ...Object.entries(nx.cost).map(([k,v])=>({t:`${v} ${k}`,ok:s.res[k]>=v,now:f(s.res[k])}))];
+   h+=`<div style="margin-top:9px" class="note">To raise it:</div>`+
+    rs.map(r=>`<div class="sub" style="color:${r.ok?"var(--patina)":"var(--rust)"}">${r.ok?"✓":"·"} ${r.t} (${r.now})</div>`).join("")+
+    `<button data-hall="1" style="margin-top:9px;width:100%" ${rs.every(r=>r.ok)?"":"disabled"}>raise the hall</button>`;}
+  h+=`</div>`;
+  const c=capOf(s);
+  h+=`<div class="card"><h2>Stores</h2>`+RES.map(k=>{
+   const lim=c[k]>=1e9?"":` <span class="sub">/ ${c[k]}</span>`;
+   const full=c[k]<1e9&&s.res[k]>=c[k]*0.98;
+   return `<div class="row"><span>${k[0].toUpperCase()+k.slice(1)}</span>
+    <span class="mono" style="color:${full?"var(--rust)":"var(--bone)"}">${f(s.res[k])}${lim}</span></div>`;}).join("")
+   +`<div class="note" style="margin-top:6px">Raising the hall widens every store.</div></div>`;
+  h+=`<div class="card"><h2>Rare things</h2>`+COMP.map(k=>
+   `<div class="row"><span>${CN[k]}</span><span class="mono">${s.res[k]||0}</span></div>`).join("")+`</div>`;
+  if((s.age||0)>0||s.orlog>0){
+   h+=`<div class="card" style="border-color:var(--gold)"><h2>Ørlǫg <span class="sub mono">${s.orlog} unspent · age ${s.age||0}</span></h2>
+    <div class="note">What the ages leave behind. No fire touches it.</div>`+
+    (()=>{const g=s.goal&&ORL.find(u=>u.id===s.goal&&!orlMaxed(s,u));
+      return g?`<div class="sub" style="color:var(--gold);margin-bottom:6px">Saving for ${g.en} — ${s.orlog} of ${orlCost(s,g)}</div>
+       <div class="bar sm" style="margin-bottom:8px"><i style="width:${pct(s.orlog,orlCost(s,g))}%;background:var(--gold)"></i></div>`:"";})()+
+    ORL.map(u=>{const t=TIER(s,u.id),max=orlMaxed(s,u),c=max?0:orlCost(s,u);
+     const aim=s.goal===u.id;
+     return `<div class="row" style="${max?"opacity:.55":aim?"border-left:2px solid var(--gold);padding-left:8px;margin-left:-10px":""}">
+      <span>${u.en} <span class="mono" style="color:${t?"var(--gold)":"var(--dim)"}">${t}/${u.tiers.length}</span>
+      <div class="sub">now — ${u.at(t)}</div>
+      ${max?"":`<div class="sub" style="color:var(--patina)">next — ${u.at(t+1)}</div>`}</span>
+      ${max?`<span class="sub">full</span>`
+       :`<button data-aim="${u.id}" style="padding:8px 10px;${aim?"border-color:var(--gold);color:var(--gold)":"opacity:.5"}">${aim?"aiming":"aim"}</button>
+         <button data-orl="${u.id}" ${s.orlog>=c?"":"disabled"} style="${s.orlog>=c?"":"color:var(--rust);border-color:var(--rust)"}">${c}</button>`}</div>`;}).join("")+`</div>`;
+  }
+  const rq=RAG.map(r=>({...r,met:r.ok(s)})), can=rq.every(r=>r.met);
+  h+=`<div class="card" style="border-color:${can?"var(--rust)":"var(--line)"}">
+   <h2>The reckoning ${s.age?`<span class="sub mono">age ${s.age} · all work +${Math.round((RX.age()-1)*100)}%</span>`:""}</h2>
+   <div class="note">It ends. It always ends. What you shelter begins the next age, and every age is richer than the last.</div>
+   <div style="margin-top:8px">`+rq.map(r=>
+    `<div class="sub" style="color:${r.met?"var(--patina)":"var(--rust)"}">${r.met?"✓":"·"} ${r.t(s)} (${r.now(s)})</div>`).join("")+
+   `</div><div class="sub" style="margin-top:7px;color:var(--gold)">You may shelter ${shelterCap(s)} things${s.age?"":" — one more each age"}.</div>
+   ${(()=>{const n=ragNeed(s),best=Math.max(...Object.keys(SK).map(k=>myL(s,k)));
+     const over=Math.min(3,(best/n.lv+loreRank(s)/n.lore+s.hall/n.hall)/3);
+     const mult=Math.max(1,Math.pow(over,1.6));
+     return `<div class="sub" style="color:var(--patina);margin-top:6px">Calling it now leaves you <b>${orlPayout(s)} ørlǫg</b>${
+      s.res.silver>=200?` — ${Math.floor(s.res.silver/200)} of that from the silver in hand`:""}.</div>
+      <div class="sub" style="color:${mult>1.05?"var(--gold)":"var(--dim)"}">You stand at ${(over*100).toFixed(0)}% of the least that would allow it, so it pays ×${mult.toFixed(2)}. Going further pays more again.</div>`;})()}
+   <button id="openrag" style="margin-top:9px;width:100%" ${can?"":"disabled"}>call the reckoning</button></div>`;
+  h+=`<div class="card"><h2>Speed <span class="sub mono">prototype only</span></h2>
+   <div class="grid"><button data-sp="1" class="${speed===1?"on pick":"pick"}"><b>1×</b><small>as designed</small></button>
+   <button data-sp="4" class="${speed===4?"on pick":"pick"}"><b>4×</b><small>to test</small></button></div>
+   ${(()=>{ if(!canSave)return "";
+     const since=S.kept?Date.now()-S.kept:null;
+     if(since!==null&&since<60*60000)return `<div class="sub" style="margin-top:11px;color:var(--patina)">Copied out ${dur(since)} ago.</div>`;
+     return `<div class="sub" style="margin-top:11px;color:var(--rust)">${since===null
+       ?"You have never copied this hall out. If this browser forgets it, it is gone."
+       :`It is ${dur(since)} since you copied this hall out.`}</div>`;})()}
+   <div class="sub" style="margin-top:8px">Keeping a copy</div>
+   <div class="note">Your hall lives in this browser alone. Copy it out and you can carry it anywhere — paste one straight into the box below.</div>
+   <textarea id="savebox" placeholder="paste a hall here, then press read one in" style="width:100%;height:60px;margin-top:7px;background:#0e131a;color:var(--dim);
+     border:1px solid var(--edge);border-radius:0;font-family:var(--mono);font-size:10px;padding:6px"></textarea>
+   <div class="row"><button id="dlsv" style="flex:1">save to a file</button><button id="expt" style="flex:1">copy it out</button></div>
+   <div class="row"><button id="impt" style="width:100%">read one in</button></div>
+   <div class="note">A file goes to your downloads and stays there. Copying puts it on the clipboard, which is easier to lose.</div>
+   <button id="rst" style="margin-top:9px;width:100%;${rstArmed
+     ?"border-color:var(--rust);color:var(--rust);opacity:1"
+     :"opacity:.55"}">${rstArmed?"tap again — this erases everything, including the save":"reset everything"}</button>
+   <div class="sub" style="margin-top:9px;text-align:center">build ${BUILD} · ${BUILT}</div>
+   <div class="sub" style="text-align:center;color:${canSave?"var(--patina)":"var(--rust)"}">${canSave
+     ?"Saving every ten seconds. Away time counts, up to fourteen hours."
+     :"Not saving — this copy runs in a sandbox. Download it or host it and saving turns itself on."}</div></div>`;
+ 
+ return h;
+}
+const VIEWS={work:view_work,crew:view_crew,craft:view_craft,sea:view_sea,lore:view_lore,quest:view_quest,hall:view_hall};
+function draw(){
+ const s=S; drawIntro(); drawAway();
+ // top resources — only what you have
+ const show=[...RES,...COMP].filter(k=>s.res[k]>0.05||["food","timber","silver"].includes(k));
+ const FL=flows(s).f, cap=capOf(s);
+ set("res",show.map(k=>{
+   const n=FL[k]?FL[k].net:0, full=cap[k]&&s.res[k]>=cap[k]-0.5;
+   const cls=(n>0.05?"up":n<-0.05?"dn":"")+(full?" full":"");
+   const ar=n>0.05?"▲":n<-0.05?"▼":"";
+   return `<span class="it ${cls}" data-flow="${k}"><b>${k[0].toUpperCase()+k.slice(1)} </b>${nfm(s.res[k])}<span class="ar"> ${full?"■":ar}</span></span>`;}).join(""));
+ const iq=INTRO[s.intro];
+ document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===tab));
+ let h="";
+ const fn=VIEWS[tab]; if(fn) h+=fn(s);
+ set("view",h);
+}
+const $=id=>document.getElementById(id);
+function W(id,v){const e=$(id);if(e)e.style.width=Math.max(0,Math.min(100,v))+"%";}
+function TX(id,v){const e=$(id);if(e&&e.textContent!==v)e.textContent=v;}
+/* runs 10x a second — never rebuilds anything, so buttons survive a tap
+   and the bars actually animate instead of being recreated mid-fill */
+function paint(){
+ const s=S;
+ // shown by what you have ever had, not what you happen to be making — so the bar
+ // only ever gains entries, and nothing you are watching slides away
+ const seen=k=>["food","timber","silver"].includes(k)||(s.tot[k]||0)>0||(s.res[k]||0)>0;
+ const show=[...RES,...COMP].filter(seen);
+ const FL=flows(s).f, cap=capOf(s);
+ set("res",show.map(k=>{
+   const n=FL[k]?FL[k].net:0, full=cap[k]&&s.res[k]>=cap[k]-0.5;
+   const cls=(n>0.05?"up":n<-0.05?"dn":"")+(full?" full":"");
+   const ar=n>0.05?"▲":n<-0.05?"▼":"";
+   return `<span class="it ${cls}" data-flow="${k}"><b>${k[0].toUpperCase()+k.slice(1)} </b>${nfm(s.res[k])}<span class="ar"> ${full?"■":ar}</span></span>`;}).join("")
+  +`<span class="st">Hall ${s.hall}${s.age?" · age "+s.age:""} · ${BUILD}${canSave?"":" · not saving"}</span>`);
+ if(tab==="work"){
+  if(atTable(s))W("tbl",pct(s.table,s.tableMax||1));
+  const R=runner(s,null);
+  if(R){const stall=R.a.use&&!Object.keys(R.a.use).every(k=>s.res[k]>=R.a.use[k]);
+   W("pb",stall?0:pct(s.prog,R.secs*1000)); W("px",xpBar(s.xp[R.a.sk]));}
+  Object.keys(SK).forEach(k=>W("sx_"+k,xpBar(s.xp[k])));
+ }
+ if(tab==="crew"){ TX("ocd",dur(s.offerT));
+  s.crew.forEach((c,i)=>{const r=runner(s,c);if(!r)return;
+   W("cb"+i,c.away?0:pct(c.prog,r.secs*1000)); W("cx"+i,xpBar(c.xp[r.a.sk]||0));}); }
+ if(tab==="sea"){
+  if(s.voy){W("vb",pct(s.voy.tot-s.voy.left,s.voy.tot));TX("vt",dur(s.voy.left));}
+  else if(!s.boat){W("hb",pct(s.res.hull,20));TX("ht",f(s.res.hull));}
+  W("cnd",s.cond);
+ }
+ // and on a hall that has never been opened, the dot is the first thing pointing you there
+ const untouched=!(s.taken||0)&&!s.intro&&s.t<10*60000;
+ const waiting=untouched||introReady(s)||["er","dy","se","ch"].some(b=>s.q[b].some(q=>q.done))||MARK.some(m=>markReady(s,m));
+ set("tq","Tasks"+(waiting?'<span class="dot"></span>':""));
+ set("tl","Lore"+((s.studies||[]).some(x=>x.ready)?'<span class="dot"></span>':""));
+ const stalled=TIER(s,"tiller")&&autoOn(s,"tiller")&&!s.voy&&s.boat;
+ set("ts","Sea"+((s.voy&&s.voy.home)?'<span class="dot"></span>'
+   :stalled?'<span class="dot" style="background:var(--rust)"></span>':""));
+ const stale=canSave&&(!s.kept||Date.now()-s.kept>60*60000)&&s.t>45*60000;
+ const hallReady=(()=>{const nx=HALL[s.hall+1];if(!nx)return false;
+   const n=Object.keys(SK).filter(k=>myL(s,k)>=nx.need.sk[1]).length;
+   return n>=nx.need.sk[0]&&Object.entries(nx.cost).every(([k,v])=>s.res[k]>=v);})();
+ // if you are saving for something, only that counts
+ const goal=s.goal&&ORL.find(u=>u.id===s.goal&&!orlMaxed(s,u));
+ const orlReady=goal ? s.orlog>=orlCost(s,goal)
+                     : ORL.some(u=>!orlMaxed(s,u)&&s.orlog>=orlCost(s,u));
+ set("th","Hall"+(stale?'<span class="dot" style="background:var(--rust)"></span>'
+   :(hallReady||orlReady)?'<span class="dot"></span>':""));
+ // your own work stopped for want of materials
+ const R0=runner(s,null);
+ const stuck=!s.act||(R0&&R0.a.use&&Object.keys(R0.a.use).some(k=>s.res[k]<R0.a.use[k]));
+ set("tw","Work"+(stuck?'<span class="dot" style="background:var(--rust)"></span>':""));
+ // someone at the gate you can afford, with room for them
+ const canHire=s.crew.length<HALL[s.hall].crew&&(s.offers||[]).some(o=>s.res.silver>=o.cost);
+ set("tc","Crew"+(canHire?'<span class="dot"></span>':""));
+ // something worth making, that you can make right now
+ const mk=makeableNow(s);
+ const fresh_=mk.some(id=>!(s.craftSeen||[]).includes(id));
+ set("tf","Craft"+(fresh_?'<span class="dot"></span>':""));
+ if(tab==="lore")(s.studies||[]).forEach((st,i)=>{ if(st.ready)return;
+  W("lb"+i,pct(st.tot-st.left,st.tot)); TX("lcd"+i,dur(st.left));});
+ if(tab==="quest"){
+  const iq2=INTRO[s.intro]; if(iq2&&iq2.n>1)W("ib",pct(Math.min(iq2.n,iq2.val(s)),iq2.n));
+  ["er","dy","se","ch"].forEach(b=>{
+   if(BAND[b].every&&s.q[b].length<bandCap(s,b))TX("cd"+b,dur(BAND[b].every-s.qt[b]));
+   s.q[b].forEach((q,i)=>{const v=Math.min(q.n,trackVal(s,q.tr)-q.base);
+    W("qb"+b+i,pct(v,q.n));TX("qp"+b+i,nfm(v));});});
+ }
+}
+/* structure is rebuilt only when something structural actually changed */
+function stateSig(){const s=S;
+ return [tab,s.unlocked.join(""),s.crew.length,s.items.length,s.known.join(""),s.intro,s.hall,
+  s.boat?1:0,s.voy?s.voy.id:"-",s.act,
+  s.crew.map(c=>c.sk+c.act+c.capL+cL(c,c.sk)+Object.values(c.eq).map(x=>x?x.rec:"-").join("")).join("/"),
+  Object.values(s.eq).map(x=>x?x.rec:"-").join(""),
+  Object.keys(SK).map(k=>myL(s,k)).join(".")+"/"+softCap(s),
+  s.offers.map(o=>o.name+o.cost).join(","),
+  ["er","dy","se","ch"].map(b=>s.q[b].map(q=>q.t+(q.done?1:0)).join("")).join("|"), s.intro+(introReady(s)?"!":""),
+  Object.keys(s.ready||{}).join(","), fireArmed||"-", s.picking?"P"+s.picks.join(""):"-", s.age, s.orlog, JSON.stringify(s.orl||{}),
+  REC.map(r=>{const okl=myL(s,r.make)>=r.lv,c1=Object.entries(r.cost).every(([k,v])=>s.res[k]>=v),
+   c2=Object.entries(r.comp).every(([k,v])=>(s.res[k]||0)>=v);return okl&&c1&&c2?1:0;}).join(""),
+  PORTS.map(p=>s.res.stores>=p.stores?1:0).join(""),
+  s.away?"A":"-", s.seen?"":"I", rstArmed?"R":"-", s.want||"-", JSON.stringify(s.auto||{})+(s.lastPort||""), s.act||"-", s.goal||"-", (s.craftSeen||[]).join(""), Math.floor((Date.now()-(s.kept||0))/60000), atTable(s)?Math.ceil(s.table/30000):0, Math.floor(s.res.silver/5), s.res.hull>=20?1:0, Math.floor(s.cond/5), speed, s.voy&&s.voy.home?"H":"-",
+  JSON.stringify(s.lore), (s.studies||[]).map(x=>x.id+(x.ready?"!":"")).join(","), MARK.map(m=>markTier(s,m)+(markReady(s,m)?"!":"")).join(""), COMP.map(k=>s.res[k]>0?1:0).join("")
+ ].join("|");}
+let lastSig="";
+function maybeDraw(){
+ if(holding){pendingDraw=true;return;}      // a button is under a finger — leave the DOM alone
+ const g=stateSig();if(g!==lastSig){lastSig=g;draw();paint();}
+}
+function pilotCard(s){
+ if(!TIER(s,"tiller"))return "";
+ const on=autoOn(s,"tiller"), cur=PORTS.find(p=>p.id===s.lastPort);
+ return `<div class="card"><div class="hd"><span class="nm">A hand on the tiller</span>
+   <span class="lv" style="color:${on?"var(--patina)":"var(--dim)"}">${on?"sailing":"ashore"}</span></div>
+  <div class="sub">${!on?`Nothing goes out until you say so.`
+    :S.voy?`She puts out again for ${cur?cur.en.toLowerCase():"wherever you last sent her"} as soon as she is fit.`
+    :(()=>{const q=cur||PORTS[0];
+      return s.res.stores<q.stores ? `<span style="color:var(--rust)">She sits on the sand — ${q.en.toLowerCase()} wants ${q.stores} stores and you have ${nfm(s.res.stores)}.</span>`
+        : s.cond<q.wear+10 ? `<span style="color:var(--rust)">She sits on the sand — too worn for ${q.en.toLowerCase()}, and there is no hull to mend her.</span>`
+        : `She will put out for ${q.en.toLowerCase()} shortly.`;})()}</div>
+  <button data-auto="tiller" style="margin-top:7px;width:100%;${on?"border-color:var(--patina);color:var(--patina)":"opacity:.55"}">${on?"let her sail":"holding her ashore"}</button>
+  ${TIER(s,"caulk")?`<button data-auto="caulk" style="margin-top:6px;width:100%;${autoOn(s,"caulk")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"caulk")?"the caulker mends her":"you mend her yourself"}</button>`:""}
+  ${on?`<div class="sub" style="margin-top:8px">Her next course — change it now and it takes effect on the next run:</div>
+   <div class="give" style="max-width:100%;justify-content:flex-start;margin-top:5px">${
+    PORTS.map(p=>`<button data-course="${p.id}" style="${s.lastPort===p.id?"border-color:var(--gold);color:var(--gold)":"opacity:.6"}">${p.en}</button>`).join("")}</div>`:""}</div>`;
+}
+/* A section that folds. Shut ones are remembered, so a long tab stays the shape
+   you left it. Anything with work waiting opens itself. */
+/* Folded unless there is a reason to be open. Once you have tapped a heading your
+   choice is kept and outlives any reason the game might have had. */
+const isShut=(s,id,dflt)=>{const v=(s.shut||{})[id]; return v===undefined?!!dflt:v;};
+function sect(s,id,title,sub,body,openByDefault){
+ const shut=isShut(s,id,!openByDefault);
+ return `<div class="card"><div class="hd" data-sect="${id}" style="cursor:pointer;user-select:none">
+   <span class="nm">${title}</span>
+   <span class="lv">${sub||""} <span style="color:var(--dim)">${shut?"▸":"▾"}</span></span></div>
+  ${shut?"":body}</div>`;
+}
+function eqHtml(eq,who){
+ const s=S, nowSk=who==="me"?(s.act?ACT[s.act].sk:null):s.crew[who].sk;
+ return `<div class="slots">`+Object.keys(SLOTS).map(sl=>{
+  const r=eq[sl]?REC.find(x=>x.id===eq[sl]):null;
+  const wrong=r&&r.sk&&nowSk&&r.sk!==nowSk;
+  const opening=s.pick&&s.pick.who===String(who)&&s.pick.slot===sl;
+  return `<div class="slot ${r?"f":""}" style="${wrong?"border-color:var(--rust)":opening?"border-color:var(--gold)":""}"
+    data-slot="${sl}" data-w="${who}">
+   <em>${SLOTS[sl]}</em>${r?r.en:"—"}${wrong?`<span style="display:block;color:var(--rust);font-size:9px">for ${SK[r.sk].toLowerCase()}, not this work</span>`:""}</div>`;
+ }).join("")+`</div>`+slotPicker(s,who);
+}
+/* Tapping a slot opens a list of what would fit it, best first. */
+function slotPicker(s,who){
+ const p=s.pick; if(!p||p.who!==String(who))return "";
+ const eq=who==="me"?s.eq:s.crew[who].eq;
+ const sk=who==="me"?null:s.crew[who].sk;
+ const fits=ownedIds(s).map(id=>REC.find(x=>x.id===id))
+   .filter(r=>r&&r.slot===p.slot&&(!r.sk||who==="me"||r.sk===sk))
+   .sort((a,b)=>recVal(b)-recVal(a));
+ const wornId=eq[p.slot];
+ return `<div class="card" style="margin-top:7px;border-color:var(--gold)">
+  <div class="hd"><span class="nm">${SLOTS[p.slot]} for ${who==="me"?"you":s.crew[who].name}</span>
+   <span class="lv"><button data-pick="" style="min-height:34px;padding:5px 11px">done</button></span></div>
+  ${wornId?`<div class="row"><span>${REC.find(x=>x.id===wornId).en} <span class="tag" style="border-color:var(--patina);color:var(--patina)">worn</span></span>
+    <button class="swap" data-unslot="${p.slot}" data-w="${who}">take it off</button></div>`:""}
+  ${fits.length?fits.map(r=>`<div class="row"><span>${r.en} <span class="mono sub">×${own(s,r.id)}</span>
+    <div class="sub">${r.sk?SK[r.sk]+" · ":""}${Object.entries(r.bonus).map(([k,v])=>`+${Math.round(v*100)}% ${k}`).join(", ")}</div></span>
+   <button class="take" data-eq="${r.id}" data-w="${who}">put on</button></div>`).join("")
+   :`<div class="note">Nothing in the hall would fit that${sk?" and serve "+SK[sk].toLowerCase():""}.</div>`}</div>`;
+}
+function fire(t){
+ const d=t.dataset;
+ if(d.t){tab=d.t;lastSig="";maybeDraw();paint();}
+ else if(d.act)setAct(d.act,d.who==="me"?"me":+d.who);
+ else if(d.hire)hire(+d.hire);
+ else if(d.fire!==undefined)dismiss(+d.fire);
+ else if(d.sell)sell(d.sell);
+ else if(d.seek)seek();
+ else if(d.slot!==undefined){ S.pick=(S.pick&&S.pick.who===d.w&&S.pick.slot===d.slot)?null:{who:d.w,slot:d.slot}; lastSig=""; maybeDraw(); }
+ else if(d.pick!==undefined){ S.pick=null; lastSig=""; maybeDraw(); }
+ else if(d.unslot){ unequip(d.w==="me"?"me":+d.w,d.unslot); lastSig=""; maybeDraw(); }
+ else if(d.rest!==undefined){ const c=S.crew[+d.rest]; if(c){ c.rest=!c.rest;
+   log(`${c.name} is ${c.rest?"set down":"back at the "+ACT[c.act].en.toLowerCase()}.`,"b"); lastSig=""; maybeDraw(); } }
+ else if(d.flow){ S.flow=S.flow===d.flow?null:d.flow; tab="work"; lastSig=""; maybeDraw(); }
+ else if(d.sect){ S.shut=S.shut||{};
+   const nowShut=/▸/.test(t.closest("[data-sect]").innerHTML);
+   S.shut[d.sect]=!nowShut; lastSig=""; maybeDraw(); }
+ else if(d.want){ S.want=S.want===d.want?null:d.want;
+   log(S.want?`Word is put out for a ${SK[S.want].toLowerCase()} hand.`:"Word is called back.","b");
+   lastSig=""; maybeDraw(); }
+ else if(d.study)study(d.study);
+ else if(d.lore!==undefined)takeLore(+d.lore);
+ else if(d.coll){const[b,i,c]=d.coll.split("|");collect(b,+i,+(c||0));}
+ else if(d.rr){const[b,i]=d.rr.split("|");reroll(b,+i);}
+ else if(d.mark)claimMark(d.mark);
+ else if(d.intro)claimIntro();
+ else if(d.craft)craft(d.craft);
+ else if(d.eq){equip(d.eq,d.w==="me"?"me":+d.w); S.pick=null; lastSig=""; maybeDraw();}
+ else if(d.un)unequip(d.w==="me"?"me":+d.w,d.un);
+ else if(d.sail)sail(d.sail);
+ else if(d.boat)buildBoat();
+ else if(d.land)land();
+ else if(d.mend)mend();
+ else if(d.table)setTable();
+ else if(d.taketool)takeTool();
+ else if(d.auto){ if(!S.auto)S.auto={}; S.auto[d.auto]=autoOn(S,d.auto)?0:1; lastSig=""; maybeDraw(); }
+ else if(d.course){ S.lastPort=d.course; log("Word is left at the tiller: next time, "+PORTS.find(p=>p.id===d.course).en.toLowerCase()+".","b"); lastSig=""; maybeDraw(); }
+ else if(d.feast)feast();
+ else if(d.hall)upHall();
+ else if(d.pick)togglePick(d.pick);
+ else if(d.orl)buyOrl(d.orl);
+ else if(d.aim){S.goal=S.goal===d.aim?null:d.aim;lastSig="";maybeDraw();}
+ else if(d.sp){speed=+d.sp;maybeDraw();}
+ else if(t.id==="openrag"){S.picking=true;S.picks=[];lastSig="";maybeDraw();}
+ else if(t.id==="cancelrag"){S.picking=false;S.picks=[];lastSig="";maybeDraw();}
+ else if(t.id==="dorag")reckon();
+ else if(t.id==="dlsv") downloadSave();
+ else if(t.id==="expt"){ const b=document.getElementById("savebox");
+   b.value=exportSave(); S.kept=Date.now(); b.focus(); b.select();
+   try{ b.setSelectionRange(0,b.value.length); }catch(_){}
+   try{ navigator.clipboard.writeText(b.value); toast("Copied — keep it somewhere safe"); }
+   catch(_){ toast("It is selected — copy it"); } }
+ else if(t.id==="impt"){ const b=document.getElementById("savebox");
+   if(!b.value.trim()){ b.focus(); toast("Paste a hall into the box first"); }
+   else if(importSave(b.value)){ toast("Hall read in — opening it"); setTimeout(()=>location.reload(),700); } }
+ else if(t.id==="introok"){ S.seen=1; delete S.away; drawIntro(); lastSig=""; maybeDraw(); }
+ else if(t.id==="awayok"){ delete S.away; drawAway(); }
+ else if(t.id==="rst"){
+   if(!rstArmed){ rstArmed=true; clearTimeout(rstT);
+    rstT=setTimeout(()=>{rstArmed=false;lastSig="";maybeDraw();},5000);
+    toast("Tap again to burn it all — this cannot be undone");
+    lastSig="";maybeDraw(); return; }
+   clearTimeout(rstT); rstArmed=false;
+   wipeSave();S=fresh();for(const k in _c)delete _c[k];rollDaily();rollWeekly();rollOffers();
+   lastSig="";log("Begin again.","b");maybeDraw();paint();}
+}
+/* Input.
+   The browser's own click event already knows the difference between a tap and a
+   scroll, so let it decide. All we have to do is make sure the button still exists
+   when the click lands: freeze rebuilding from the moment a finger touches a button
+   until shortly after. */
+let thawT=null,rstArmed=false,rstT=null;
+function freeze(){ holding=true; clearTimeout(thawT); thawT=setTimeout(thaw,1200); }
+function thaw(){ clearTimeout(thawT); holding=false;
+ if(pendingDraw){pendingDraw=false;maybeDraw();} }
+const HIT="button,[data-slot],[data-sect],[data-flow],[data-un],[data-act]";
+try{ document.body.style.cursor="pointer"; }catch(_){}
+
+/* Taps fire on release, not on the browser's synthesised click.
+   Safari withholds a click whenever anything under the finger changes between
+   press and release — and paint() changes numbers ten times a second — so the
+   click never came and the tap was simply lost. Pointer events always arrive. */
+let downOn=null, downX=0, downY=0, firedAt=0;
+function doTap(t){
+ if(!t||t.disabled) return;
+ firedAt=Date.now();
+ freeze();
+ // choosing a work must look instant, even though the rebuild is held back
+ if(t.dataset.act&&t.dataset.who==="me"){
+  try{document.querySelectorAll("[data-act][data-who='me']").forEach(b=>
+   b.classList.toggle("on",b===t));}catch(_){}
+ }
+ fire(t);
+ try{paint();}catch(_){}
+ clearTimeout(thawT); thawT=setTimeout(thaw,70);
+}
+/* A finger is never still. Anything under about fifteen pixels is a tap, not a
+   scroll — and we act on what was pressed, not on whatever happens to be under
+   the finger when it lifts, since the row beneath may have been redrawn. */
+const TAP_SLOP=15;
+document.addEventListener("pointerdown",e=>{
+ downOn=e.target.closest(HIT); downX=e.clientX; downY=e.clientY;
+ if(downOn) freeze();
+},{passive:true});
+document.addEventListener("pointerup",e=>{
+ const moved=Math.hypot(e.clientX-downX,e.clientY-downY);
+ if(downOn&&moved<=TAP_SLOP) doTap(downOn);
+ else { clearTimeout(thawT); thawT=setTimeout(thaw,120); }
+ downOn=null;
+},{passive:true});
+/* Safari cancels a touch the moment it suspects a scroll. If the finger never
+   really moved, that was a tap and we honour it. */
+document.addEventListener("pointercancel",e=>{
+ const moved=Math.hypot((e.clientX||downX)-downX,(e.clientY||downY)-downY);
+ if(downOn&&moved<=TAP_SLOP) doTap(downOn);
+ downOn=null; clearTimeout(thawT); thawT=setTimeout(thaw,120);
+},{passive:true});
+// keyboards and any browser without pointer events still get here
+document.addEventListener("click",e=>{
+ if(Date.now()-firedAt<700) return;      // already handled on release
+ doTap(e.target.closest(HIT));
+});
+/* ---------------- go ---------------- */
+/* ---------------- keeping and catching up ----------------
+   localStorage is blocked inside the artifact sandbox, so every call is wrapped —
+   the game simply runs without saving here, and saves the moment the file is
+   opened from anywhere else (a downloaded copy, or somewhere it is hosted). */
+const SAVEKEY="hall.save", HORIZON=14*3600*1000;
+/* The save version is the shape of a fresh state, not a number I have to remember
+   to raise. Add or rename a field and old saves are refused by themselves. */
+const SAVEVER=(()=>{ const k=Object.keys(fresh()).sort().join(",");
+ let h=0; for(let i=0;i<k.length;i++){h=(h*31+k.charCodeAt(i))>>>0;}
+ return "s"+h.toString(36); })();
+let canSave=false;
+try{ localStorage.setItem("hall.probe","1"); localStorage.removeItem("hall.probe"); canSave=true; }catch(_){}
+function saveGame(){ if(!canSave)return;
+ try{ S.savedAt=Date.now(); localStorage.setItem(SAVEKEY,JSON.stringify({v:SAVEVER,s:S})); }catch(_){}}
+function exportSave(){
+ try{ S.savedAt=Date.now();
+  const blob=btoa(unescape(encodeURIComponent(JSON.stringify({v:SAVEVER,s:S}))));
+  return blob; }catch(_){ return ""; }
+}
+function importSave(txt){
+ try{
+  const d=JSON.parse(decodeURIComponent(escape(atob(txt.trim()))));
+  if(!d||!d.s)throw 0;
+  if(d.v!==SAVEVER){ toast("That hall was built to another plan"); return false; }
+  localStorage.setItem(SAVEKEY,JSON.stringify(d));
+  return true;
+ }catch(_){ toast("That is not a hall"); return false; }
+}
+function downloadSave(){
+ try{
+  const txt=exportSave();
+  const d=new Date(), pad=n=>String(n).padStart(2,"0");
+  const name=`hall-age${S.age||0}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.txt`;
+  const url=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));
+  const a=document.createElement("a"); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  S.kept=Date.now();
+  toast("Saved to your downloads");
+ }catch(_){ toast("Could not write the file — copy it out instead"); }
+}
+function wipeSave(){ if(!canSave)return; try{ localStorage.removeItem(SAVEKEY); }catch(_){}}
+function loadGame(){ if(!canSave)return false;
+ try{ const raw=localStorage.getItem(SAVEKEY); if(!raw)return false;
+  const d=JSON.parse(raw);
+  if(d.v!==SAVEVER){ log("The old hall was built to another plan and could not be raised again.","b"); return false; }
+  // a save made before a field existed must not arrive missing it
+  const base=fresh(), old=d.s;
+  for(const k in base) if(old[k]===undefined) old[k]=base[k];
+  ["ev","life","lev","q","qt","orl","marks","mseen","lore","res","tot","xp","eq"].forEach(k=>{
+   if(typeof base[k]==="object"&&base[k]&&!Array.isArray(base[k])){
+    old[k]=old[k]||{};
+    for(const kk in base[k]) if(old[k][kk]===undefined) old[k][kk]=base[k][kk];
+   }});
+  (old.crew||[]).forEach(c=>{ c.eq=c.eq||blankEq(); c.xp=c.xp||{}; });
+  S=old; return true;
+ }catch(_){ return false; } }
+
+function snap(){ const o={res:{},lv:{}};
+ [...RES,...COMP].forEach(k=>o.res[k]=S.res[k]||0);
+ Object.keys(SK).forEach(k=>o.lv[k]=myL(S,k));
+ o.lore=loreRank(S); o.done=["er","dy","se","ch"].reduce((a,b)=>a+S.q[b].filter(q=>q.done).length,0);
+ o.voy=(S.ev.voyages||0); o.mends=(S.ev.mends||0); o.meals=S.res.meals||0;
+ return o; }
+
+function catchUp(){
+ if(!S.savedAt)return;
+ const away=Math.min(HORIZON,Date.now()-S.savedAt);
+ if(away<60000||!S.seen)return;
+ const before=snap(); S.lost={};
+ const chunk=away>6*3600000?300000:60000;      // coarser chunks for a long absence
+ let left=away; while(left>0){ const d=Math.min(chunk,left); advance(d); left-=d; }
+ const after=snap(), hrs=away/3600000;
+ const gained=[...RES,...COMP].map(k=>[k,after.res[k]-before.res[k]])
+   .filter(([k,v])=>v>0.5).sort((a,b)=>b[1]-a[1]).slice(0,4)
+   .map(([k,v])=>`${nfm(v)} ${k}`).join(", ");
+ const rose=Object.keys(SK).filter(k=>after.lv[k]>before.lv[k])
+   .map(k=>`${SK[k]} ${after.lv[k]}`).join(", ");
+ const lost=Object.entries(S.lost||{}).filter(([,v])=>v>1).sort((a,b)=>b[1]-a[1]).slice(0,3)
+   .map(([k,v])=>`${nfm(v)} ${k}`).join(", ");
+ const idle=S.crew.filter((c,i)=>{ if(i>=HALL[S.hall].crew)return true;
+   const r=runner(S,c); return r&&r.a.use&&Object.keys(r.a.use).some(k=>S.res[k]<r.a.use[k]); })
+   .map(c=>c.name);
+ // what the things you bought actually did while you were gone
+ const sailed=after.voy-before.voy, mended=after.mends-before.mends;
+ let boat=null;
+ if(TIER(S,"tiller")&&!S.voy){
+  const p=PORTS.find(x=>x.id===S.lastPort)||PORTS[0];
+  boat = S.res.stores<p.stores ? "stores" : S.cond<p.wear+10 ? "worn" : "idle";
+ }
+ const board=TIER(S,"board")?(atTable(S)?"set":"bare"):null;
+ S.away={hrs,gained,rose,lost,idle,waiting:after.done-before.done,
+  home:!!(S.voy&&S.voy.home), studies:(S.studies||[]).filter(x=>x.ready).length, unpaid:!!S.unpaid,
+  sailed,mended,boat,board,meals:Math.round(S.res.meals||0)};
+ const bits=[];
+ if(gained)bits.push(gained);
+ if(rose)bits.push("and rose to "+rose);
+ log(`You were away ${hrs<1?Math.round(hrs*60)+" minutes":hrs.toFixed(1)+" hours"}. ${bits.join(" ")||"Little changed."}`,"b");
+ if(lost)log(`${lost} was lost for want of room. Raise the hall, or read wide eaves.`,"bad");
+ if(idle.length)log(`${idle.join(", ")} stood idle — no materials, or no room under the roof.`,"bad");
+ if(after.done>before.done)log(`${after.done-before.done} piece${after.done-before.done>1?"s":""} of work now waiting to be taken.`,"y");
+ toast(`Away ${hrs<1?Math.round(hrs*60)+"m":hrs.toFixed(1)+"h"} — ${gained||"little changed"}`);
+ delete S.lost;
+}
+
+S=fresh();
+const resumed=loadGame();
+if(!resumed){ rollDaily();rollWeekly();rollOffers(); }
+log("You alone on a cold shore, with nothing and no one. Choose your own work to begin.","b");
+log("A man called Ásta waits at the gate, but you have no silver for him yet.");
+// catchUp already advances the clock, which spawns work at the proper rate.
+// topping up here would hand you a full board on every reload.
+if(resumed){ catchUp(); if(!S.offers||!S.offers.length)rollOffers(); }
+last=performance.now();maybeDraw();paint();
+setInterval(tick,100);
+if(canSave){
+ setInterval(saveGame,10000);
+ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden")saveGame(); });
+ window.addEventListener("pagehide",saveGame);
+ window.addEventListener("beforeunload",saveGame);
+}
+
+</script>
+</body>
+</html>
