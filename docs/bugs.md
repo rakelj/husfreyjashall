@@ -66,6 +66,33 @@ level (`REC` tier-1 tools), independent of tier, so a product-craft tool can be
 worked out before a raw-craft one. Gate/order them so raw → processed → product,
 matching the chain (and the dependency order the road already teaches in).
 
+## 8. 🔴 Market overhaul (naming, refresh behaviour, per-market rules)
+Bigger pass on the kaupstefna markets.
+
+**Naming.** They're generically labelled "Market — <port>". Should use the
+kaupstefna terminology and each market should have a proper name (design.md §9 has
+real names: Kaupang, Hedeby/Ribe, Dublin, York, Staraya Ladoga/Novgorod,
+Miklagarðr). Decide how port name vs. market name relate.
+
+**A ship returns while that market is already open — what happens?** (decision needed)
+- Returning from the **same** water/destination → add to the timer? refresh it?
+- Returning from a **different** one → open a second market, or extend/replace?
+Current behaviour: `openMarket` resets the timer *and* regenerates the offers for
+that port; different ports open separate markets. Needs a deliberate rule.
+
+**Per-market offer rules.**
+- **First market (home / Kaupang):**
+  - Always **two base-material** sell offers + occasionally **one rare** (a rare
+    gathered at sea) — i.e. the rare slot only shows up sometimes.
+  - A sell offer should take **¾ of what your store currently holds** of that
+    material, with the silver reward scaled to that amount (offers sized to your
+    stock, not flat).
+- **The other three markets:** similar shape but richer — they should let you sell
+  **more than 3–4 different things** (more offers / more variety the farther out).
+
+(Ties into #1's "bigger boat holds more" and the existing `marketWealth` scaling —
+keep them coherent.)
+
 ---
 
 *Add new bugs above this line as they come in.*
