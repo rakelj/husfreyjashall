@@ -519,8 +519,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.15.6";
+const BUILD="v0.15.7";
 const BUILT="30 Jul 2026";
+// one line, updated each build, so it is obvious at a glance when a new version has landed
+const NOTES="Bark, clay and horn now go into the tools named for them.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2015,6 +2017,7 @@ function view_hall(s){
      ?"border-color:var(--rust);color:var(--rust);opacity:1"
      :"opacity:.55"}">${rstArmed?"tap again — this erases everything, including the save":"reset everything"}</button>
    <div class="sub" style="margin-top:9px;text-align:center">build ${BUILD} · ${BUILT}</div>
+   <div class="sub" style="text-align:center;color:var(--gold);font-style:italic">new this build — ${NOTES}</div>
    <div class="sub" style="text-align:center;color:${canSave?"var(--patina)":"var(--rust)"}">${canSave
      ?"Saving every ten seconds. Away time counts, up to fourteen hours."
      :"Not saving — this copy runs in a sandbox. Download it or host it and saving turns itself on."}</div></div>`;
