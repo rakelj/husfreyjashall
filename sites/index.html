@@ -565,10 +565,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.1";
+const BUILD="v0.17.2";
 const BUILT="30 Jul 2026";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Rare things can now be sold at a market — a far, rich water pays far more for them.";
+const NOTES="Fixed a starvation deadlock — a crew forager now feeds the hall out of a food shortage, not only you.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -802,7 +802,8 @@ function runner(s,c){
  return{a,L,secs:a.secs/spd,yld,xpm:1+eqBonus(eq,a.sk,"xp")};
 }
 function doCycle(s,c){
- if(s.starved&&!(c===null&&ACT[s.act]&&ACT[s.act].out.food))return;   // hungry hands do nothing but forage
+ const _a=ACT[c?c.act:s.act];
+ if(s.starved&&!(_a&&_a.out&&_a.out.food))return;   // when the hall starves, only work that brings in food goes on — anyone's, not just yours
  const R=runner(s,c);if(!R)return;
  const a=R.a;
  const uc=k=>a.use[k]*(k==="ore"?RX.ore():1);
