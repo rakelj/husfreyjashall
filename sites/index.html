@@ -563,10 +563,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.16.1";
+const BUILD="v0.16.2";
 const BUILT="30 Jul 2026";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="A kaupstefna on the Sea tab — barter your overflow for silver, or buy what runs short.";
+const NOTES="Idle now catches up when you return to the tab, not only on a full reload.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2557,9 +2557,15 @@ log("A woman named Ásta waits at the gate, but you have no silver for her yet."
 if(resumed){ catchUp(); if(!S.offers||!S.offers.length)rollOffers(); }
 last=performance.now();maybeDraw();paint();
 setInterval(tick,100);
+// coming back to a backgrounded tab is not a reload, so nothing caught up the idle time
+// and the browser throttled the tick to nothing. Catch up on the way back in, the same
+// as a fresh load would, then re-anchor the clock so the next tick does not double-count.
+function resume(){ if(!canSave)return; catchUp(); last=performance.now(); saveGame(); maybeDraw(); paint(); }
 if(canSave){
  setInterval(saveGame,10000);
- document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden")saveGame(); });
+ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden")saveGame(); else resume(); });
+ window.addEventListener("focus",resume);
+ window.addEventListener("pageshow",e=>{ if(e.persisted)resume(); });   // iOS restores from the bfcache without a reload
  window.addEventListener("pagehide",saveGame);
  window.addEventListener("beforeunload",saveGame);
 }
