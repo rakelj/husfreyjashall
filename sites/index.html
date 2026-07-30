@@ -294,11 +294,47 @@ const NAMES=["Ásta","Gyða","Sigríðr","Álfdís","Ragnhildr","Yrsa","Bergljó
 const VOY_SCALE=16;
 /* A hall does not crew a ship. You fit one out and take a félag — a partnership —
    with people who sail for a share of what comes home, not for wages. */
+/* Ships are built, not bought — three tiers, each a real build in hull and sailcloth.
+   A bigger ship is worth it for the waters it reaches, not for a bigger number, and you
+   may keep a fleet: each ship sails on its own, so several can be at sea at once.
+   reach: which waters she can cross (0 home · 1 west/north · 2 east). */
+const SHIPS=[
+ {id:"faering", en:"Færing",   build:{hull:20,sailcloth:8},           reach:0, speed:1.0,  wear:1.0,  cargo:1.0},
+ {id:"knarr",   en:"Knarr",    build:{hull:80,sailcloth:34,iron:20},  reach:1, speed:1.15, wear:0.82, cargo:1.7},
+ {id:"longship",en:"Longship", build:{hull:200,sailcloth:90,iron:70}, reach:2, speed:1.35, wear:0.70, cargo:2.5}
+];
+/* Four waters, west to east, each with its own bias in the rare things it brings home.
+   reach must be met by the ship that sails there. */
+const SEAS=[
+ {id:"home",  en:"Home waters",       reach:0, bias:"amber"},
+ {id:"west",  en:"The western sea",   reach:1, bias:"glass"},
+ {id:"north", en:"The northern water",reach:1, bias:"ivory"},
+ {id:"east",  en:"The eastern way",   reach:2, bias:"silk"}
+];
+/* Destinations, four to a water. The first of each (open:true) is yours the moment a
+   ship can reach it; the rest are found — a chart comes home, rarely, from the deepest
+   water you can already sail, and opens the next of its kind (see rollHaul). */
 const PORTS=[
- {id:"coast", en:"Coastal run",  mins:1.5,share:0.18,fit:10,stores:12,wear:11, silver:[54,102], comp:{amber:.55,whetstone:.35}, need:20},
- {id:"isles", en:"The isles",    mins:3,  share:0.24,fit:25,stores:28,wear:22,silver:[135,240], comp:{ivory:.5,amber:.5,whetstone:.4}, need:45},
- {id:"west",  en:"West over sea",mins:6,  share:0.3,fit:60,stores:60,wear:38,silver:[330,570],comp:{glass:.5,ivory:.55,whetstone:.4},need:90},
- {id:"east",  en:"The east way", mins:10, share:0.36,fit:120,stores:110,wear:58,silver:[690,1140],comp:{silk:.5,glass:.5,amber:.6}, need:150}
+ // home — a færing will do
+ {id:"coast",  sea:"home", en:"Coastal run",    mins:1.5, share:0.18, fit:10,  stores:12,  wear:11, silver:[54,102],    comp:{amber:.55,whetstone:.35}, open:true},
+ {id:"skerry", sea:"home", en:"The skerries",   mins:2.2, share:0.20, fit:16,  stores:18,  wear:15, silver:[90,168],    comp:{amber:.6,whetstone:.4}},
+ {id:"fjords", sea:"home", en:"The far fjords", mins:3.0, share:0.22, fit:24,  stores:26,  wear:20, silver:[150,258],   comp:{amber:.65,whetstone:.45,ivory:.15}},
+ {id:"kaupang",sea:"home", en:"Kaupang",        mins:3.8, share:0.22, fit:34,  stores:34,  wear:24, silver:[228,372],   comp:{amber:.55,whetstone:.5,glass:.2}},
+ // west — a knarr
+ {id:"isles",  sea:"west", en:"The isles",      mins:3.5, share:0.26, fit:34,  stores:34,  wear:26, silver:[210,360],   comp:{whetstone:.5,ivory:.35}, open:true},
+ {id:"dublin", sea:"west", en:"Dublin",         mins:5.0, share:0.30, fit:56,  stores:56,  wear:36, silver:[360,600],   comp:{glass:.45,whetstone:.5}},
+ {id:"york",   sea:"west", en:"York",           mins:5.8, share:0.30, fit:66,  stores:64,  wear:40, silver:[432,720],   comp:{glass:.5,whetstone:.45,silk:.12}},
+ {id:"faroes", sea:"west", en:"Beyond the isles",mins:6.6,share:0.32, fit:80,  stores:76,  wear:46, silver:[540,876],   comp:{glass:.5,ivory:.4}},
+ // north — a knarr
+ {id:"halog",  sea:"north",en:"Hålogaland",     mins:4.2, share:0.28, fit:44,  stores:44,  wear:32, silver:[270,450],   comp:{ivory:.6,amber:.35}, open:true},
+ {id:"finnr",  sea:"north",en:"The Finn coast", mins:5.6, share:0.30, fit:62,  stores:60,  wear:40, silver:[420,690],   comp:{ivory:.7,whetstone:.35}},
+ {id:"bjarma", sea:"north",en:"Bjarmaland",     mins:7.0, share:0.33, fit:88,  stores:82,  wear:50, silver:[624,1008],  comp:{ivory:.75,silk:.15}},
+ {id:"iceedge",sea:"north",en:"The ice edge",   mins:8.2, share:0.35, fit:110, stores:100, wear:58, silver:[810,1290],  comp:{ivory:.8,glass:.25}},
+ // east — a longship
+ {id:"ladoga", sea:"east", en:"Staraya Ladoga", mins:7.0, share:0.34, fit:110, stores:100, wear:52, silver:[720,1170],  comp:{silk:.5,glass:.4}, open:true},
+ {id:"novgor", sea:"east", en:"Novgorod",       mins:8.6, share:0.36, fit:140, stores:126, wear:60, silver:[960,1524],  comp:{silk:.6,glass:.45}},
+ {id:"kaenu",  sea:"east", en:"Kœnugarðr",      mins:10.0,share:0.38, fit:176, stores:156, wear:68, silver:[1260,1980], comp:{silk:.65,glass:.5,amber:.4}},
+ {id:"micklg", sea:"east", en:"Miklagarðr",     mins:12.0,share:0.40, fit:230, stores:200, wear:78, silver:[1740,2640], comp:{silk:.75,glass:.55}}
 ];
 /* staged opening — the tutorial IS the game */
 /* The way on — a numbered road through the first hour. Each step is taken, not given. */
@@ -363,7 +399,7 @@ const INTRO=[
   say:"Sailmaking, once there is cloth to cut. A wool sail is more work than the hull it drives."},
  {t:"Rivet a hull of twenty",      val:s=>s.res.hull, n:20, r:{silver:90},
   say:"Shipwright, last of all — timber and iron riveted until she will float."},
- {t:"Put a boat in the water",     val:s=>s.boat?1:0, n:1, r:{stores:60},
+ {t:"Put a boat in the water",     val:s=>s.fleet.length?1:0, n:1, r:{stores:60},
   say:"The sea is where rare things come from, and nowhere else."},
  {t:"Come home from a voyage",     val:s=>lifeEv(s,"voyages"), n:1, r:{comp:"amber"},
   say:"Amber. Some things cannot be made, only fetched."},
@@ -381,7 +417,7 @@ const INTRO=[
   say:"The finer gear is only ever shown to you at sea. Sail for it."},
  {t:"Raise the hall to five",      val:s=>s.hall, n:5, r:{silver:2600},
   say:"Five at the board, and the stores to feed them."},
- {t:"Sail the east way",           val:s=>(s.sailed||[]).includes("east")?1:0, n:1, r:{comp:"silk"},
+ {t:"Sail the east way",           val:s=>(s.sailed||[]).some(pid=>{const p=portDef(pid);return p&&p.sea==="east";})?1:0, n:1, r:{comp:"silk"},
   say:"The long water. Silk comes from there, and little else does."},
  {t:"Raise the hall to six",       val:s=>s.hall, n:6, r:{silver:5000},
   say:"What was once the greatest hall you could raise. It is not, any longer."},
@@ -430,8 +466,8 @@ const DAYW=[
  {w:3,t:"Cook a great many pots",tr:"res:meals",n:40,r:175},{w:3,t:"Rivet strakes",tr:"res:hull",n:70,r:165},
  {w:1,t:"Take someone on",tr:"ev:hires",n:1,r:150,req:s=>s.crew.length<HALL[s.hall].crew},
  {w:1,t:"Make several things",tr:"ev:crafts",n:3,r:160,req:s=>s.known.length>=2&&needsGear(s)},
- {w:1,t:"Sail out",     tr:"ev:voyages",n:1,r:190,req:s=>s.boat},
- {w:1,t:"Mend the boat",tr:"ev:mends",  n:1,r:130,req:s=>s.boat},
+ {w:1,t:"Sail out",     tr:"ev:voyages",n:1,r:190,req:s=>s.fleet.length},
+ {w:1,t:"Mend a ship", tr:"ev:mends",  n:1,r:130,req:s=>s.fleet.length},
  {w:1,t:"Read a tier of lore",tr:"ev:lores",n:1,r:200,req:s=>loreRank(s)>=1}
 ];
 const SEAW=[
@@ -440,7 +476,7 @@ const SEAW=[
  {t:"A winter of wool",    tr:"res:wool",  n:2000},{t:"A winter of cloth", tr:"res:cloth", n:600},
  {t:"A winter of stores",  tr:"res:stores",n:1600},{t:"A winter of fish",tr:"res:fish",n:3000},
  {t:"A winter of sailcloth",tr:"res:sailcloth",n:250},{t:"A winter of hull",  tr:"res:hull",  n:400},
- {t:"A season at sea",     tr:"ev:voyages",n:5,req:s=>s.boat},
+ {t:"A season at sea",     tr:"ev:voyages",n:5,req:s=>s.fleet.length},
  {t:"A season of reading", tr:"ev:lores",  n:4}
 ];
 const CHRG=[
@@ -515,14 +551,14 @@ const ORL=[
 const RAG=[
  {t:s=>`Raise the hall to ${ragNeed(s).hall}`, ok:s=>s.hall>=ragNeed(s).hall, now:s=>`hall ${s.hall}`},
  {t:s=>`Read ${ragNeed(s).lore} tiers of lore`, ok:s=>loreRank(s)>=ragNeed(s).lore, now:s=>`${loreRank(s)}/${ragNeed(s).lore}`},
- {t:s=>"Put a boat in the water", ok:s=>s.boat, now:s=>s.boat?"done":"none"},
+ {t:s=>"Put a boat in the water", ok:s=>s.fleet.length>0, now:s=>s.fleet.length?"done":"none"},
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.15.7";
+const BUILD="v0.16.0";
 const BUILT="30 Jul 2026";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Bark, clay and horn now go into the tools named for them.";
+const NOTES="The sea is rebuilt — build a fleet, sail three tiers of ship across four waters, and find charts to reach farther.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -633,7 +669,7 @@ const orlMaxed=(s,u)=>TIER(s,u.id)>=u.tiers.length;
 function orlPayout(s){ return orlEarned(s)+Math.floor((s.res.silver||0)/200); }
 function orlEarned(s){
  const lv=Object.keys(SK).reduce((a,k)=>a+myL(s,k),0);
- const base=lv*0.22+s.hall*3+loreRank(s)*2+(s.boat?4:0);
+ const base=lv*0.22+s.hall*3+loreRank(s)*2+(s.fleet.length?4:0);
  // how far past the least you could have called it — waiting is paid for
  const n=ragNeed(s), best=Math.max(...Object.keys(SK).map(k=>myL(s,k)));
  const over=Math.min(3, (best/n.lv + loreRank(s)/n.lore + s.hall/n.hall)/3);
@@ -736,7 +772,7 @@ function fresh(){
  return{t:0,res,tot,xp,act:null,prog:0,eq:blankEq(),
   crew:[],hall:1,unlocked:["woods","hew"],known:[],items:{},
   intro:0,q:{er:[],dy:[],se:[],ch:[]},qt:{er:0,dy:0,se:0},life:{},lev:{},
-  offers:[],offerT:0,voy:null,log:[],boat:false,cond:100,used:[],lore:{},studies:[],
+  offers:[],offerT:0,fleet:[],trips:[],opened:{},sailed:[],log:[],used:[],lore:{},studies:[],
   got:[],marks:{},mseen:{},seekN:0,seen:0,flow:null,unpaid:false,starved:false,pick:null,shut:{},want:null,auto:{tiller:1,caulk:1,board:1,hand:1},craftSeen:[],goal:null,kept:0,feastBoost:0,iseen:0,chDone:[],table:0,tableMax:0,tableLift:0,tkn:{er:0,dy:0,se:0},
   ev:{hires:0,crafts:0,voyages:0,sells:0,mends:0,levels:0,lores:0,tables:0}, did:{},
   age:0,picking:false,picks:[],orl:{},orlog:0};
@@ -811,10 +847,10 @@ function advance(dt){
   if(s.table===0)log("The pot is empty and the board is cleared.","b"); }
  // a standing board fills itself again, so long as something is cooked
  if(!s.table&&TIER(s,"board")&&autoOn(s,"board")&&s.res.meals>=tableCost(s)) setTable(true);
- if(s.voy&&!s.voy.home){ s.voy.left-=dt;
-  if(s.voy.left<=0){ s.voy.left=0; s.voy.home=true; s.voy.haul=rollHaul(s,s.voy.id);
-   if(TIER(s,"tiller")>0&&autoOn(s,"tiller")){ land(); }    // a pilot brings her in himself
-   else { log(`She is back on the sand with ${haulText(s.voy.haul)}.`,"y"); toast("The boat is home"); } } }
+ for(let ti=s.trips.length-1;ti>=0;ti--){ const t=s.trips[ti]; if(t.home)continue; t.left-=dt;
+  if(t.left<=0){ t.left=0; t.home=true; const sh=s.fleet[t.ship]; t.haul=sh?rollHaul(s,t.dest,sh):null;
+   if(TIER(s,"tiller")>0&&autoOn(s,"tiller")) land(ti);   // a hand on the tiller brings her in herself
+   else { log(`The ${sh?shipDef(sh.tier).en.toLowerCase():"ship"} is back on the sand with ${haulText(t.haul||{silver:0,comps:{}})}.`,"y"); toast("A ship is home"); } } }
  if(s.studies&&s.studies.length){
   s.studies.forEach(st=>{ if(st.ready)return; st.left-=dt;
    if(st.left<=0){ st.left=0; st.ready=true;
@@ -1357,32 +1393,53 @@ function setAct(k,who){const s=S;
  if(who==="me"){s.act=k;s.prog=0;reachForTool(s,ACT[k].sk);}
  else {s.crew[who].act=k;s.crew[who].prog=0;}
  maybeDraw();}
+/* ── the fleet and the waters ── */
+const shipDef=id=>SHIPS.find(x=>x.id===id);
+const seaDef=id=>SEAS.find(x=>x.id===id);
+const portDef=id=>PORTS.find(x=>x.id===id);
+const seaOfPort=p=>seaDef((portDef(p)||{}).sea);
+const shipReach=sh=>shipDef(sh.tier).reach;
+const fleetReach=s=>(s.fleet||[]).reduce((m,sh)=>Math.max(m,shipReach(sh)),-1);
+const portOpen=(s,pid)=>{const p=portDef(pid);return !!p&&(p.open||!!(s.opened&&s.opened[pid]));};
+const shipCanSail=(sh,pid)=>shipReach(sh)>=seaOfPort(pid).reach;
+const tripOf=(s,i)=>(s.trips||[]).find(t=>t.ship===i);   // the voyage a fleet ship is on, if any
+const portsBySea=id=>PORTS.filter(p=>p.sea===id);
+const openPortsBySea=(s,id)=>portsBySea(id).filter(p=>portOpen(s,p.id));
+const nextLockedPort=(s,id)=>portsBySea(id).find(p=>!portOpen(s,p.id));   // declaration order = depth
+const frontierPort=(s,id)=>{const o=openPortsBySea(s,id);return o.length?o[o.length-1]:null;};
+const canBuildShip=(s,tier)=>{const d=shipDef(tier);return d.reach===0||(s.fleet||[]).some(sh=>shipReach(sh)>=d.reach-1);};
+const voyMs=(s,sh,p)=>p.mins*60000*VOY_SCALE*RX.voy()/shipDef(sh.tier).speed;   // p is a port object
 const shareOf=(s,p)=>Math.max(0.05,p.share*(1-0.12*TIER(s,"known")));
 const fitOf=(s,p)=>Math.round(p.fit*(1+0.25*(s.age||0))*(1-0.10*TIER(s,"known")));
-function sail(id){const s=S,p=PORTS.find(x=>x.id===id);if(!p||s.voy)return;
- if(!s.boat){toast("You have no boat");return;}
+function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
+ const sh=s.fleet[shipIdx]; if(!sh){toast("No ship for that");return;}
+ if(tripOf(s,shipIdx)){toast("She is already at sea");return;}
+ if(!portOpen(s,portId)){toast("You have no chart for that water");return;}
+ if(!shipCanSail(sh,portId)){toast(`A ${shipDef(sh.tier).en.toLowerCase()} cannot reach ${seaOfPort(portId).en.toLowerCase()}`);return;}
+ if(sh.cond<=0){toast("There is nothing left of her to sail");return;}
  if(s.res.stores<p.stores){toast(`Wants ${p.stores} stores`);return;}
- if(s.cond<=0){toast("There is nothing left of her to sail");return;}
  const fit=fitOf(s,p);
  if(s.res.silver<fit){toast(`${nfm(fit)} silver to fit her out and take a crew`);return;}
- s.res.silver-=fit;
-s.sailed=[...(s.sailed||[]),id];s.lastPort=id;
- s.res.stores-=p.stores;
- const dur=p.mins*60000*VOY_SCALE*RX.voy(); s.voy={id,left:dur,tot:dur};
- log(`Away on ${p.en.toLowerCase()}.`,"b");maybeDraw();}
+ s.res.silver-=fit; s.res.stores-=p.stores;
+ sh.last=portId; s.sailed=[...new Set([...(s.sailed||[]),portId])];
+ const tot=voyMs(s,sh,p); s.trips.push({ship:shipIdx,dest:portId,left:tot,tot,home:false,haul:null});
+ log(`The ${shipDef(sh.tier).en.toLowerCase()} is away on ${p.en.toLowerCase()}.`,"b");maybeDraw();}
 // the hold is decided when she touches the sand, so you can see it before you unload
-function rollHaul(s,id){
- const p=PORTS.find(x=>x.id===id);
+function rollHaul(s,portId,sh){
+ const p=portDef(portId), d=shipDef(sh.tier);
  const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
- const sv=Math.round((p.silver[0]+Math.random()*(p.silver[1]-p.silver[0]))*(1+luck*0.5)*RX.silver());
+ const sv=Math.round((p.silver[0]+Math.random()*(p.silver[1]-p.silver[0]))*(1+luck*0.5)*RX.silver()*d.cargo);
  const comps={};
  for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*(1+luck))) comps[k]=(comps[k]||0)+1;
  const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
  let way=null;
  // the finer gear is only ever shown to you, never worked out alone — but rarely
  if(un.length&&Math.random()<Math.min(0.35,0.14+luck*0.10)) way=un[Math.floor(Math.random()*un.length)].id;
- const wear=p.wear*RX.wear()*(0.85+Math.random()*0.35);
- return {silver:sv,comps,way,wear,lost:Math.random()<lossChance(s.cond,wear)};
+ // a chart comes home only from the deepest water you can already sail, and opens the next of its kind
+ let chart=null; const nl=nextLockedPort(s,p.sea), fr=frontierPort(s,p.sea);
+ if(nl&&fr&&fr.id===portId&&Math.random()<Math.min(0.5,0.20+luck*0.12)) chart=nl.id;
+ const wear=p.wear*RX.wear()*d.wear*(0.85+Math.random()*0.35);
+ return {silver:sv,comps,way,chart,wear,lost:Math.random()<lossChance(sh.cond,wear)};
 }
 function haulText(h){
  const bits=[`${h.silver} silver`];
@@ -1390,39 +1447,38 @@ function haulText(h){
  if(h.way)bits.push("a way of making "+REC.find(r=>r.id===h.way).en.toLowerCase());
  return bits.join(", ");
 }
-function land(){const s=S; if(!s.voy)return;
- const p=PORTS.find(x=>x.id===s.voy.id);const auto=TIER(s,"tiller")>0&&autoOn(s,"tiller");
- const h=s.voy.haul||rollHaul(s,s.voy.id);
- s.voy=null;
- s.cond=Math.max(0,s.cond-h.wear);
- if(h.lost){ s.boat=false; s.cond=0; s.lastPort=null; s.voy=null;
-  log("She did not come home. The sea keeps her, and everything in her hold.","bad");
-  toast("The boat is lost"); maybeDraw(); return; }
- if(s.cond<=0){ s.boat=false; s.cond=0; s.lastPort=null;
-  log("She came apart on the way in. What is left is driftwood — you will have to lay another keel.","bad");
-  toast("The boat is lost"); }
- const cut=Math.round(h.silver*shareOf(s,PORTS.find(x=>x.id===p.id)));
+function loseShip(s,fi){ s.fleet.splice(fi,1);
+ // trips index into the fleet, so drop the lost ship's trip and shift the rest down
+ s.trips=(s.trips||[]).filter(t=>t.ship!==fi).map(t=>t.ship>fi?{...t,ship:t.ship-1}:t); }
+// a hand on the tiller mends her from the hall's stores and puts her out again on her last water
+function autoTend(s,fi){ const sh=s.fleet[fi]; if(!sh||!sh.last)return; const p=portDef(sh.last); if(!p)return;
+ let guard=0; while(TIER(s,"caulk")&&autoOn(s,"caulk")&&sh.cond<p.wear+10&&guard++<20){ if(!mendShip(s,fi,true))break; }
+ if(!tripOf(s,fi)&&shipCanSail(sh,sh.last)&&portOpen(s,sh.last)&&s.res.stores>=p.stores&&sh.cond>=p.wear+10&&s.res.silver>=fitOf(s,p)) sail(sh.last,fi);
+}
+function land(ti){const s=S; const t=s.trips[ti]; if(!t)return;
+ const p=portDef(t.dest), sh=s.fleet[t.ship];
+ const h=t.haul||(sh?rollHaul(s,t.dest,sh):{silver:0,comps:{},wear:0});
+ s.trips.splice(ti,1);
+ if(!sh){maybeDraw();return;}
+ sh.cond=Math.max(0,sh.cond-h.wear);
+ if(h.lost){ const nm=shipDef(sh.tier).en.toLowerCase(); loseShip(s,t.ship);
+  log(`The ${nm} did not come home. The sea keeps her, and everything in her hold.`,"bad");
+  toast("A ship is lost"); maybeDraw(); return; }
+ const cut=Math.round(h.silver*shareOf(s,p));
  give(s,"silver",h.silver-cut);
  Object.entries(h.comps).forEach(([k,v])=>give(s,k,v));
  if(h.way&&!s.known.includes(h.way)){ s.known.push(h.way);
   log(`Someone shows you how a ${REC.find(r=>r.id===h.way).en.toLowerCase()} is made.`,"y"); }
- s.voyages=(s.voyages||0)+1; s.ev.voyages++;
- if(s.cond<35)log("She came home taking water. The strakes want mending.","b");
+ if(h.chart&&!portOpen(s,h.chart)){ s.opened[h.chart]=true; const np=portDef(h.chart);
+  log(`A chart comes home — ${np.en} is yours to sail now.`,"y"); toast("A chart: "+np.en); }
+ s.ev.voyages++;
  log(`Unloaded — ${haulText(h)}. The crew take ${nfm(cut)} silver as their share.`,"g");
  toast("Landfall: "+h.silver+" silver");
- if(auto&&autoOn(s,"tiller")&&s.lastPort){ const q=PORTS.find(x=>x.id===s.lastPort);
-  if(q){
-   let guard=0;
-   while(TIER(s,"caulk")&&autoOn(s,"caulk")&&s.cond<q.wear+10&&guard++<20){
-    const want=Math.min(8,Math.ceil((100-s.cond)/5));
-    const cloth=Math.max(2,Math.round(want*2.2)), stone=want>=6?1:0;
-    if(want<=0||s.res.hull<want||s.res.sailcloth<cloth||(stone&&(s.res.whetstone||0)<stone))break;
-    s.res.hull-=want; s.res.sailcloth-=cloth; if(stone)s.res.whetstone-=stone;
-    s.cond=Math.min(100,s.cond+want*5); s.mends=(s.mends||0)+1; s.ev.mends++;
-   }
-   if(s.res.stores>=q.stores&&s.cond>=q.wear+10) sail(s.lastPort);
-   else log("She wants more than the hall can give her — she stays on the sand.","bad");
-  } }
+ if(sh.cond<=0){ const nm=shipDef(sh.tier).en.toLowerCase(); loseShip(s,t.ship);
+  log(`The ${nm} came apart on the way in — driftwood now. You will lay another keel.`,"bad");
+  toast("A ship is lost"); maybeDraw(); return; }
+ if(sh.cond<35)log("She came home taking water. The strakes want mending.","b");
+ if(TIER(s,"tiller")>0&&autoOn(s,"tiller")) autoTend(s,t.ship);
  maybeDraw();
 }
 // a hall with meat to spare draws better people than a hall with silver
@@ -1440,22 +1496,26 @@ function setTable(quiet){const s=S;
  log(`A pot on the board — every hand works ${Math.round(s.tableLift*100)}% harder for ${dur(s.table)}.`,"good");
  if(!quiet)toast("The table is set");
  maybeDraw();}
-function mend(){const s=S;const want=Math.min(8,Math.ceil((100-s.cond)/5));
+function mendShip(s,fi,quiet){ const sh=s.fleet[fi]; if(!sh)return false;
+ const want=Math.min(8,Math.ceil((100-sh.cond)/5));
  const cloth=Math.max(2,Math.round(want*2.2)), stone=want>=6?1:0;
- if(want<=0){toast("She is sound");return;}
- if(s.res.hull<want){toast(`Wants ${want} hull — rivet more strakes`);return;}
- if(s.res.sailcloth<cloth){toast(cloth+" sailcloth to mend her");return;}
- if(stone&&(s.res.whetstone||0)<stone){toast("An Eidsborg hone to true the rivets");return;}
+ if(want<=0){if(!quiet)toast("She is sound");return false;}
+ if(s.res.hull<want){if(!quiet)toast(`Wants ${want} hull — rivet more strakes`);return false;}
+ if(s.res.sailcloth<cloth){if(!quiet)toast(cloth+" sailcloth to mend her");return false;}
+ if(stone&&(s.res.whetstone||0)<stone){if(!quiet)toast("An Eidsborg hone to true the rivets");return false;}
  s.res.hull-=want; s.res.sailcloth-=cloth; if(stone)s.res.whetstone-=stone;
- s.cond=Math.min(100,s.cond+want*5);
- s.mends=(s.mends||0)+1; s.ev.mends++;
- log(`Strakes mended. She is at ${Math.round(s.cond)}.`,"g");maybeDraw();}
-const BOAT_HULL=20, BOAT_SAIL=8;
-function buildBoat(){const s=S; if(s.boat)return;
- if(s.res.hull<BOAT_HULL||s.res.sailcloth<BOAT_SAIL){
-  toast(`Wants ${BOAT_HULL} hull and ${BOAT_SAIL} sailcloth`);return;}
- s.res.hull-=BOAT_HULL; s.res.sailcloth-=BOAT_SAIL; s.boat=true;
- log("A boat stands on the sand, sound and tarred.","b");toast("You have a boat");maybeDraw();}
+ sh.cond=Math.min(100,sh.cond+want*5); s.ev.mends++;
+ if(!quiet)log(`Strakes mended. She is at ${Math.round(sh.cond)}.`,"g");
+ return true;
+}
+function mend(fi){ if(mendShip(S,+fi,false))maybeDraw(); }
+function buildShip(tier){const s=S; const d=shipDef(tier); if(!d)return;
+ if(!canBuildShip(s,tier)){toast("Build a smaller ship first");return;}
+ for(const k in d.build) if((s.res[k]||0)<d.build[k]){ toast(`Wants ${Object.entries(d.build).map(([a,v])=>v+" "+a).join(", ")}`); return; }
+ for(const k in d.build) s.res[k]-=d.build[k];
+ s.fleet.push({tier,cond:100,last:null});
+ log(`A ${d.en.toLowerCase()} stands on the sand, sound and tarred.`,"b"); toast(d.en+" built"); maybeDraw();
+}
 function upHall(){const s=S,h=HALL[s.hall+1];if(!h)return;
  const nsk=Object.keys(SK).filter(k=>myL(s,k)>=h.need.sk[1]).length;
  if(nsk<h.need.sk[0])return;
@@ -1501,10 +1561,10 @@ function drawAway(){
  if(a.rose)li.push(`Rose to <b>${a.rose}</b>`);
  if(a.lost)li.push(`<span style="color:var(--rust)">Lost <b>${a.lost}</b> for want of room</span>`);
  if(a.idle&&a.idle.length)li.push(`<span style="color:var(--rust)">${a.idle.join(", ")} stood idle</span>`);
- if(a.sailed>0)li.push(`The boat came and went <b>${a.sailed}</b> time${a.sailed>1?"s":""}${a.mended>0?`, mended <b>${a.mended}</b> time${a.mended>1?"s":""}`:""}`);
- if(a.boat==="stores")li.push(`<span style="color:var(--rust)">She sits on the sand — no stores left to provision her</span>`);
- if(a.boat==="worn")li.push(`<span style="color:var(--rust)">She sits on the sand — too worn, and no hull to mend her</span>`);
- if(a.boat==="idle")li.push(`<span style="color:var(--rust)">She sits on the sand</span>`);
+ if(a.sailed>0)li.push(`Ships came and went <b>${a.sailed}</b> time${a.sailed>1?"s":""}${a.mended>0?`, mended <b>${a.mended}</b> time${a.mended>1?"s":""}`:""}`);
+ if(a.boat==="stores")li.push(`<span style="color:var(--rust)">A ship sits on the sand — no stores left to provision her</span>`);
+ if(a.boat==="worn")li.push(`<span style="color:var(--rust)">A ship sits on the sand — too worn, and no hull to mend her</span>`);
+ if(a.boat==="idle")li.push(`<span style="color:var(--rust)">A ship sits on the sand</span>`);
  if(a.board==="set")li.push(`The board stayed set${a.meals?`, <b>${nfm(a.meals)}</b> pots left`:""}`);
  if(a.unpaid)li.push(`<span style="color:var(--rust)">The purse ran empty — your people stopped until there was silver</span>`);
  if(a.board==="bare")li.push(`<span style="color:var(--rust)">The board went bare — nothing left cooked</span>`);
@@ -1764,51 +1824,70 @@ function view_craft(s){
 }
 function view_sea(s){
  let h="";
-  if(!s.boat){
-   h+=`<div class="card"><h2>The keel</h2><div class="sub">Hull <span id="ht">${f(s.res.hull)}</span> / 20</div>
-    <div class="bar"><i id="hb" style="width:${pct(s.res.hull,20)}%"></i></div>
-    <div class="note" style="margin-top:7px">${s.unlocked.includes("rivet")?`She wants ${BOAT_HULL} hull and ${BOAT_SAIL} sailcloth.`:"You do not yet know how a strake is riveted."}</div>
-    <button data-boat="1" style="margin-top:8px;width:100%" ${s.res.hull>=20?"":"disabled"}>launch her</button></div>`;
-  } else if(s.voy&&s.voy.home){const p=PORTS.find(x=>x.id===s.voy.id);
-   h+=pilotCard(s);
-   h+=`<div class="card" style="border-color:var(--patina)"><div class="hd"><span class="nm">${p.en}</span><span class="lv">home</span></div>
-    <div class="sub">${haulText(s.voy.haul||{silver:0,comps:{}})}</div>
-    <button class="take" data-land="1" style="margin-top:9px;width:100%">unload her</button></div>`;
-  } else if(s.voy){const p=PORTS.find(x=>x.id===s.voy.id);
-   h+=pilotCard(s);
-   h+=`<div class="card"><div class="hd"><span class="nm">The boat</span><span class="lv">${Math.round(s.cond)} / 100</span></div>
-    <div class="bar sm"><i id="cnd" style="width:${s.cond}%;background:${s.cond<35?"var(--rust)":"var(--patina)"}"></i></div></div>`;
-   h+=`<div class="card act"><h2>${p.en}</h2><div class="sub"><span id="vt">${dur(s.voy.left)}</span> until the sand</div>
-    <div class="bar"><i id="vb" style="width:${pct(s.voy.tot-s.voy.left,s.voy.tot)}%"></i></div></div>`;
-  } else {
-   const want=Math.min(8,Math.ceil((100-s.cond)/5));
-   h+=`<div class="card"><div class="hd"><span class="nm">The boat</span><span class="lv">${Math.round(s.cond)} / 100</span></div>
-    <div class="bar sm"><i id="cnd" style="width:${s.cond}%;background:${s.cond<35?"var(--rust)":"var(--patina)"}"></i></div>
-    <div class="sub" style="margin-top:6px">${s.cond>=99?"Sound and tarred.":`Mending wants ${want} hull — you have ${f(s.res.hull)}. Rivet strakes to make more.`}</div>
-    <button data-mend="1" style="margin-top:7px;width:100%" ${s.cond<99&&s.res.hull>=want?"":"disabled"}>mend her</button></div>`;
-   h+=pilotCard(s);
-   if(s.cond<25) h+=`<div class="card" style="border-color:var(--rust)"><div class="hd"><span class="nm">She is failing</span><span class="lv" style="color:var(--rust)">${Math.round(s.cond)}</span></div>
-    <div class="sub">Below twenty-five she may not come home at all. Mend her before you send her out.</div></div>`;
-   h+=`<div class="card"><h2>Where to</h2>`+PORTS.map(p=>{
-    const can=s.res.stores>=p.stores&&s.cond>=p.wear+10;
-    const fit=fitOf(s,p), sh=shareOf(s,p);
-    const why=`<span style="color:${s.res.stores>=p.stores?"var(--patina)":"var(--rust)"}">${p.stores} stores</span>`
-     +`<span style="color:var(--dim)"> · </span><span style="color:${s.res.silver>=fit?"var(--patina)":"var(--rust)"}">${nfm(fit)} to fit out</span>`
-     +`<span style="color:var(--dim)"> · they take ${Math.round(sh*100)}%</span>`;
+ h+=pilotCard(s);
+ const idle=s.fleet.map((sh,i)=>({sh,i})).filter(x=>!tripOf(s,x.i));
+ // ── the fleet ──
+ if(!s.fleet.length){
+  h+=`<div class="card"><h2>No ship on the sand</h2><div class="note">${s.unlocked.includes("rivet")
+    ?"Build a færing on the slipway below — twenty hull and eight sailcloth — and the home waters open to you."
+    :"You do not yet know how a strake is riveted. Learn the shipwright's hand first."}</div></div>`;
+ } else {
+  h+=`<div class="card"><h2>Your fleet <span class="sub mono">${s.fleet.length} ship${s.fleet.length>1?"s":""}${s.trips.length?` · ${s.trips.length} at sea`:""}</span></h2>`+
+   s.fleet.map((sh,i)=>{ const d=shipDef(sh.tier), t=tripOf(s,i); let body;
+    if(t&&t.home){ const p=portDef(t.dest);
+     body=`<div class="sub" style="color:var(--patina)">Home from ${p.en.toLowerCase()} — ${haulText(t.haul||{silver:0,comps:{}})}</div>
+      <button class="take" data-land="${i}" style="margin-top:6px;width:100%">unload her</button>`;
+    } else if(t){ const p=portDef(t.dest);
+     body=`<div class="sub">On ${p.en.toLowerCase()} · <span id="vt${i}">${dur(t.left)}</span> to the sand</div>
+      <div class="bar sm" style="margin-top:4px"><i id="vb${i}" style="width:${pct(t.tot-t.left,t.tot)}%;background:var(--frost)"></i></div>`;
+    } else { const want=Math.min(8,Math.ceil((100-sh.cond)/5));
+     body=`<div class="bar sm"><i id="cnd${i}" style="width:${sh.cond}%;background:${sh.cond<35?"var(--rust)":"var(--patina)"}"></i></div>
+      <div class="sub" style="margin-top:5px">${sh.cond>=99?"Sound and tarred, on the sand.":`Mending wants ${want} hull — you have ${f(s.res.hull)}.`}</div>`+
+      (sh.cond<99?`<button data-mend="${i}" style="margin-top:6px;width:100%" ${s.res.hull>=want?"":"disabled"}>mend her</button>`:"");
+    }
+    return `<div style="margin:9px 0 2px;border-top:1px solid var(--edge);padding-top:8px">
+      <div class="hd"><span class="nm">${d.en}</span><span class="lv">${Math.round(sh.cond)}/100${!t&&sh.cond<25?' <span style="color:var(--rust)">failing</span>':""}</span></div>
+      ${body}</div>`;
+   }).join("")+`</div>`;
+ }
+ // ── the slipway ──
+ if(s.unlocked.includes("rivet")){
+  h+=`<div class="card"><h2>The slipway</h2>`+SHIPS.filter(d=>canBuildShip(s,d.id)).map(d=>{
+    const can=Object.keys(d.build).every(k=>(s.res[k]||0)>=d.build[k]);
+    const cost=Object.entries(d.build).map(([k,v])=>`<span style="color:${(s.res[k]||0)>=v?"var(--patina)":"var(--rust)"}">${v} ${k}</span>`).join('<span style="color:var(--dim)"> · </span>');
+    const reachTxt=["the home waters","the western and northern waters","the eastern way"][d.reach];
+    const perks=[d.cargo>1?`${Math.round((d.cargo-1)*100)}% more in the hold`:"",d.speed>1?`${Math.round((d.speed-1)*100)}% quicker`:"",d.wear<1?`wears ${Math.round((1-d.wear)*100)}% slower`:""].filter(Boolean).join(" · ");
+    return `<div class="row"><span>${d.en}<div class="sub">reaches ${reachTxt}${perks?" · "+perks:""}</div><div class="sub">${cost}</div></span>
+     <button class="${can?"take":""}" data-build="${d.id}" ${can?"":"disabled"}>build</button></div>`;
+  }).join("")+`</div>`;
+ }
+ // ── the waters ──
+ if(s.fleet.length){
+  SEAS.forEach(sea=>{
+   const canReach=fleetReach(s)>=sea.reach, ports=portsBySea(sea.id);
+   const openCount=ports.filter(p=>portOpen(s,p.id)).length;
+   const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+   const m=(1+luck*0.5)*RX.silver();
+   const body=ports.map(p=>{
+    if(!portOpen(s,p.id)){ const fr=frontierPort(s,sea.id);
+     return `<div class="row"><span style="color:var(--dim)">${p.en} <span class="tag">uncharted</span>
+       <div class="sub">${canReach?`A chart from ${fr?fr.en.toLowerCase():"the deepest water here"} may open her.`:"Farther than your ships can reach."}</div></span></div>`;
+    }
+    const fit=fitOf(s,p), shr=shareOf(s,p);
+    const senders=idle.filter(x=>shipCanSail(x.sh,p.id));
+    const btns=senders.length?senders.map(x=>{
+      const ok=s.res.stores>=p.stores&&x.sh.cond>=p.wear+10&&s.res.silver>=fit;
+      return `<button data-sail="${p.id}|${x.i}" ${ok?"":"disabled"}>${s.fleet.length>1?shipDef(x.sh.tier).en.toLowerCase():"sail"}</button>`;
+    }).join(""):`<span class="sub" style="color:var(--dim)">${canReach?"no ship free":"—"}</span>`;
     return `<div class="row"><span>${p.en}
-     <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · ${why} · ${(()=>{
-       const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
-       const m=(1+luck*0.5)*RX.silver();
-       return `${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver`;})()}</div>
-     <div class="sub">costs her ${Math.round(p.wear*RX.wear())} condition${(()=>{
-       const risk=lossChance(s.cond,p.wear*RX.wear());
-       return risk>0?` · <span style="color:var(--rust)">${Math.round(risk*100)}% she is lost</span>`:"";})()} · ${Object.keys(p.comp).map(k=>{
-       const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
-       const ch=Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100);
-       return `<span class="tag amber">${CN[k]} ${ch}%</span>`;}).join("")}</div></span>
-     <button data-sail="${p.id}" ${can?"":"disabled"}>sail</button></div>`;}).join("")+`</div>`;
-  }
- 
+      <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · ${p.stores} stores · ${nfm(fit)} to fit · they take ${Math.round(shr*100)}%</div>
+      <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div></span>
+      <span class="give" style="max-width:52%">${btns}</span></div>`;
+   }).join("");
+   h+=sect(s,"sea_"+sea.id, sea.en+(canReach?"":` <span class="tag">${sea.reach===1?"wants a knarr":"wants a longship"}</span>`),
+     `${openCount}/${ports.length}`, body, canReach);
+  });
+ }
  return h;
 }
 /* Lore — what is being read, and what may be */
@@ -2070,17 +2149,16 @@ function paint(){
   s.crew.forEach((c,i)=>{const r=runner(s,c);if(!r)return;
    W("cb"+i,c.away?0:pct(c.prog,r.secs*1000)); W("cx"+i,xpBar(c.xp[r.a.sk]||0));}); }
  if(tab==="sea"){
-  if(s.voy){W("vb",pct(s.voy.tot-s.voy.left,s.voy.tot));TX("vt",dur(s.voy.left));}
-  else if(!s.boat){W("hb",pct(s.res.hull,20));TX("ht",f(s.res.hull));}
-  W("cnd",s.cond);
+  s.trips.forEach(t=>{ if(!t.home){W("vb"+t.ship,pct(t.tot-t.left,t.tot));TX("vt"+t.ship,dur(t.left));} });
+  s.fleet.forEach((sh,i)=>{ if(!tripOf(s,i))W("cnd"+i,sh.cond); });
  }
  // and on a hall that has never been opened, the dot is the first thing pointing you there
  const untouched=!(s.taken||0)&&!s.intro&&s.t<10*60000;
  const waiting=untouched||introReady(s)||["er","dy","se","ch"].some(b=>s.q[b].some(q=>q.done))||MARK.some(m=>markReady(s,m));
  set("tq","Tasks"+(waiting?'<span class="dot"></span>':""));
  set("tl","Lore"+((s.studies||[]).some(x=>x.ready)?'<span class="dot"></span>':""));
- const stalled=TIER(s,"tiller")&&autoOn(s,"tiller")&&!s.voy&&s.boat;
- set("ts","Sea"+((s.voy&&s.voy.home)?'<span class="dot"></span>'
+ const stalled=TIER(s,"tiller")&&autoOn(s,"tiller")&&s.fleet.some((sh,i)=>!tripOf(s,i)&&sh.last);
+ set("ts","Sea"+(s.trips.some(t=>t.home)?'<span class="dot"></span>'
    :stalled?'<span class="dot" style="background:var(--rust)"></span>':""));
  const stale=canSave&&(!s.kept||Date.now()-s.kept>60*60000)&&s.t>45*60000;
  const hallReady=(()=>{const nx=HALL[s.hall+1];if(!nx)return false;
@@ -2116,7 +2194,7 @@ function paint(){
 /* structure is rebuilt only when something structural actually changed */
 function stateSig(){const s=S;
  return [tab,s.unlocked.join(""),s.crew.length,s.items.length,s.known.join(""),s.intro,s.hall,
-  s.boat?1:0,s.voy?s.voy.id:"-",s.act,
+  s.fleet.map(sh=>sh.tier+Math.round(sh.cond/5)).join(",")+"|"+s.trips.map(t=>t.ship+t.dest+(t.home?"H":"")).join(",")+"|"+Object.keys(s.opened||{}).length,s.act,
   s.crew.map(c=>c.sk+c.act+c.capL+cL(c,c.sk)+Object.values(c.eq).map(x=>x?x.rec:"-").join("")).join("/"),
   Object.values(s.eq).map(x=>x?x.rec:"-").join(""),
   Object.keys(SK).map(k=>myL(s,k)).join(".")+"/"+softCap(s),
@@ -2126,7 +2204,7 @@ function stateSig(){const s=S;
   REC.map(r=>{const okl=myL(s,r.make)>=r.lv,c1=Object.entries(r.cost).every(([k,v])=>s.res[k]>=v),
    c2=Object.entries(r.comp).every(([k,v])=>(s.res[k]||0)>=v);return okl&&c1&&c2?1:0;}).join(""),
   PORTS.map(p=>s.res.stores>=p.stores?1:0).join(""),
-  s.away?"A":"-", s.seen?"":"I", rstArmed?"R":"-", s.want||"-", JSON.stringify(s.auto||{})+(s.lastPort||""), s.act||"-", s.goal||"-", (s.craftSeen||[]).join(""), Math.floor((Date.now()-(s.kept||0))/60000), atTable(s)?Math.ceil(s.table/30000):0, Math.floor(s.res.silver/5), s.res.hull>=20?1:0, Math.floor(s.cond/5), speed, s.voy&&s.voy.home?"H":"-",
+  s.away?"A":"-", s.seen?"":"I", rstArmed?"R":"-", s.want||"-", JSON.stringify(s.auto||{}), s.act||"-", s.goal||"-", (s.craftSeen||[]).join(""), Math.floor((Date.now()-(s.kept||0))/60000), atTable(s)?Math.ceil(s.table/30000):0, Math.floor(s.res.silver/5), s.res.hull>=20?1:0, speed, s.trips.some(t=>t.home)?"H":"-",
   JSON.stringify(s.lore), (s.studies||[]).map(x=>x.id+(x.ready?"!":"")).join(","), MARK.map(m=>markTier(s,m)+(markReady(s,m)?"!":"")).join(""), COMP.map(k=>s.res[k]>0?1:0).join("")
  ].join("|");}
 let lastSig="";
@@ -2135,21 +2213,14 @@ function maybeDraw(){
  const g=stateSig();if(g!==lastSig){lastSig=g;draw();paint();}
 }
 function pilotCard(s){
- if(!TIER(s,"tiller"))return "";
- const on=autoOn(s,"tiller"), cur=PORTS.find(p=>p.id===s.lastPort);
+ if(!TIER(s,"tiller")||!s.fleet.length)return "";
+ const on=autoOn(s,"tiller");
  return `<div class="card"><div class="hd"><span class="nm">A hand on the tiller</span>
    <span class="lv" style="color:${on?"var(--patina)":"var(--dim)"}">${on?"sailing":"ashore"}</span></div>
-  <div class="sub">${!on?`Nothing goes out until you say so.`
-    :S.voy?`She puts out again for ${cur?cur.en.toLowerCase():"wherever you last sent her"} as soon as she is fit.`
-    :(()=>{const q=cur||PORTS[0];
-      return s.res.stores<q.stores ? `<span style="color:var(--rust)">She sits on the sand — ${q.en.toLowerCase()} wants ${q.stores} stores and you have ${nfm(s.res.stores)}.</span>`
-        : s.cond<q.wear+10 ? `<span style="color:var(--rust)">She sits on the sand — too worn for ${q.en.toLowerCase()}, and there is no hull to mend her.</span>`
-        : `She will put out for ${q.en.toLowerCase()} shortly.`;})()}</div>
-  <button data-auto="tiller" style="margin-top:7px;width:100%;${on?"border-color:var(--patina);color:var(--patina)":"opacity:.55"}">${on?"let her sail":"holding her ashore"}</button>
-  ${TIER(s,"caulk")?`<button data-auto="caulk" style="margin-top:6px;width:100%;${autoOn(s,"caulk")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"caulk")?"the caulker mends her":"you mend her yourself"}</button>`:""}
-  ${on?`<div class="sub" style="margin-top:8px">Her next course — change it now and it takes effect on the next run:</div>
-   <div class="give" style="max-width:100%;justify-content:flex-start;margin-top:5px">${
-    PORTS.map(p=>`<button data-course="${p.id}" style="${s.lastPort===p.id?"border-color:var(--gold);color:var(--gold)":"opacity:.6"}">${p.en}</button>`).join("")}</div>`:""}</div>`;
+  <div class="sub">${on?"Each ship is unloaded and put out again on her own last water, as soon as she is mended and provisioned."
+    :"Every ship waits on the sand until you send her."}</div>
+  <button data-auto="tiller" style="margin-top:7px;width:100%;${on?"border-color:var(--patina);color:var(--patina)":"opacity:.55"}">${on?"let them sail":"holding them ashore"}</button>
+  ${TIER(s,"caulk")?`<button data-auto="caulk" style="margin-top:6px;width:100%;${autoOn(s,"caulk")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"caulk")?"the caulker mends them":"you mend them yourself"}</button>`:""}</div>`;
 }
 /* A section that folds. Shut ones are remembered, so a long tab stays the shape
    you left it. Anything with work waiting opens itself. */
@@ -2222,14 +2293,13 @@ function fire(t){
  else if(d.craft)craft(d.craft);
  else if(d.eq){equip(d.eq,d.w==="me"?"me":+d.w); S.pick=null; lastSig=""; maybeDraw();}
  else if(d.un)unequip(d.w==="me"?"me":+d.w,d.un);
- else if(d.sail)sail(d.sail);
- else if(d.boat)buildBoat();
- else if(d.land)land();
- else if(d.mend)mend();
+ else if(d.sail){const[pid,fi]=d.sail.split("|");sail(pid,+fi);}
+ else if(d.build)buildShip(d.build);
+ else if(d.land!==undefined){const fi=+d.land;const ti=S.trips.findIndex(t=>t.ship===fi&&t.home);if(ti>=0)land(ti);}
+ else if(d.mend!==undefined)mend(+d.mend);
  else if(d.table)setTable();
  else if(d.taketool)takeTool();
  else if(d.auto){ if(!S.auto)S.auto={}; S.auto[d.auto]=autoOn(S,d.auto)?0:1; lastSig=""; maybeDraw(); }
- else if(d.course){ S.lastPort=d.course; log("Word is left at the tiller: next time, "+PORTS.find(p=>p.id===d.course).en.toLowerCase()+".","b"); lastSig=""; maybeDraw(); }
  else if(d.feast)feast();
  else if(d.hall)upHall();
  else if(d.pick)togglePick(d.pick);
@@ -2361,9 +2431,17 @@ function wipeSave(){ if(!canSave)return; try{ localStorage.removeItem(SAVEKEY); 
 function loadGame(){ if(!canSave)return false;
  try{ const raw=localStorage.getItem(SAVEKEY); if(!raw)return false;
   const d=JSON.parse(raw);
-  if(d.v!==SAVEVER){ log("The old hall was built to another plan and could not be raised again.","b"); return false; }
-  // a save made before a field existed must not arrive missing it
   const base=fresh(), old=d.s;
+  if(!old||!old.res){ log("The old hall could not be read.","b"); return false; }
+  // carry a pre-fleet hall forward: the one boat becomes a færing, its voyage a trip
+  if(old.fleet===undefined && (old.boat!==undefined||old.voy!==undefined)){
+   old.fleet = old.boat ? [{tier:"faering", cond:(old.cond==null?100:old.cond), last:(portDef(old.lastPort)?old.lastPort:null)}] : [];
+   old.trips = (old.voy && portDef(old.voy.id)) ? [{ship:0,dest:old.voy.id,left:old.voy.left,tot:old.voy.tot,home:!!old.voy.home,haul:old.voy.haul||null}] : [];
+   old.opened = old.opened||{}; old.sailed = Array.isArray(old.sailed)?old.sailed:[];
+   delete old.boat; delete old.cond; delete old.voy; delete old.lastPort;
+   log("The plan of the sea has changed — your boat is drawn up on the sand as a færing.","b");
+  }
+  // a save made before a field existed must not arrive missing it
   for(const k in base) if(old[k]===undefined) old[k]=base[k];
   ["ev","life","lev","q","qt","orl","marks","mseen","lore","res","tot","xp","eq"].forEach(k=>{
    if(typeof base[k]==="object"&&base[k]&&!Array.isArray(base[k])){
@@ -2401,14 +2479,16 @@ function catchUp(){
    .map(c=>c.name);
  // what the things you bought actually did while you were gone
  const sailed=after.voy-before.voy, mended=after.mends-before.mends;
+ // a ship the tiller could not send out again sits on the sand
  let boat=null;
- if(TIER(S,"tiller")&&!S.voy){
-  const p=PORTS.find(x=>x.id===S.lastPort)||PORTS[0];
-  boat = S.res.stores<p.stores ? "stores" : S.cond<p.wear+10 ? "worn" : "idle";
+ const stuck=S.fleet.find((sh,i)=>!tripOf(S,i)&&sh.last);
+ if(TIER(S,"tiller")&&stuck){
+  const p=portDef(stuck.last)||PORTS[0];
+  boat = S.res.stores<p.stores ? "stores" : stuck.cond<p.wear+10 ? "worn" : "idle";
  }
  const board=TIER(S,"board")?(atTable(S)?"set":"bare"):null;
  S.away={hrs,gained,rose,lost,idle,waiting:after.done-before.done,
-  home:!!(S.voy&&S.voy.home), studies:(S.studies||[]).filter(x=>x.ready).length, unpaid:!!S.unpaid,
+  home:S.trips.some(t=>t.home), studies:(S.studies||[]).filter(x=>x.ready).length, unpaid:!!S.unpaid,
   sailed,mended,boat,board,meals:Math.round(S.res.meals||0)};
  const bits=[];
  if(gained)bits.push(gained);
