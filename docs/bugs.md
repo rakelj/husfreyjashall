@@ -93,6 +93,16 @@ that port; different ports open separate markets. Needs a deliberate rule.
 (Ties into #1's "bigger boat holds more" and the existing `marketWealth` scaling —
 keep them coherent.)
 
+## 9. 🔴 Flow panel: show time-to-empty for negative flows
+Under "What is moving", tapping a resource whose net flow is **negative** should
+also show how long until it runs out (time-to-empty), the mirror of the "full in
+Xm" shown for positive flows.
+
+## 10. 🔴 Times shown as decimal minutes instead of m/s
+Some times render like "2.8 minutes" (seen in Lore, possibly elsewhere) — should be
+minutes-and-seconds, e.g. "2m 48s". Likely the lore mins values (`loreMins`) printed
+raw instead of going through `dur()`. Audit for other decimal-minute displays.
+
 ---
 
 *Add new bugs above this line as they come in.*
