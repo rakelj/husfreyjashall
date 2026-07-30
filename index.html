@@ -192,9 +192,9 @@ const CN={kelp:"Kelp",fish:"Fish",bark:"Bark",clay:"Clay",horn:"Horn",salt:"Salt
    shape of the hall. */
 const ACT={
  // ── raw ──
- // woods is the first work you start with; shore unlocks later. Declared in that
- // order so the Work-tab list stays stable when shore appears (see §1: every
- // craft's earlier-unlocked work is declared first).
+ // woods is the first foraging work you start with; shore unlocks later. Kept in
+ // that order for tidiness — the Work tab itself orders works and crafts by when
+ // they were unlocked (see view_work), so nothing on screen shifts as things open.
  woods:{en:"Walk the woods", sk:"forage",out:{food:2.4},  secs:4.4,xp:9,  rare:{herbs:0.22}},
  shore:{en:"Walk the shore", sk:"forage",out:{food:1.6,kelp:1.0},secs:4.0,xp:9},
  net:  {en:"Set nets",       sk:"fish",  out:{fish:2.4},  secs:5.5,xp:12},
@@ -1551,14 +1551,20 @@ function view_work(s){
    ${atTable(s)?`<div class="bar sm"><i id="tbl" style="width:${pct(s.table,s.tableMax||1)}%;background:var(--gold)"></i></div>`:""}
    <button data-table="1" style="margin-top:8px;width:100%" ${s.res.meals>=tableCost(s)?"":"disabled"}>set the table · ${tableCost(s)}</button>
    ${TIER(s,"board")?`<button data-auto="board" style="margin-top:6px;width:100%;${autoOn(s,"board")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"board")?"the board sets itself":"setting it yourself"}</button>`:""}</div>`;
+  // works and crafts show in the order you unlocked them (their place in s.unlocked),
+  // so a newly-opened work lands at the foot of its craft/tier and nothing already
+  // on screen shifts up or down.
+  const rev=a=>{const i=s.unlocked.indexOf(a);return i<0?1e9:i;};
+  const craftRev=sk=>Math.min(...Object.keys(ACT).filter(k=>ACT[k].sk===sk&&s.unlocked.includes(k)).map(rev));
   h+=`<div class="card"><h2>Your work</h2>
    <div class="note" style="margin-bottom:8px">Most crafts have two hands to them — a steadier rate, or something you cannot get any other way.</div>`+
    TIERS.map(T=>{
-    const inTier=T.ks.filter(sk=>Object.keys(ACT).some(k=>ACT[k].sk===sk&&s.unlocked.includes(k)));
+    const inTier=T.ks.filter(sk=>Object.keys(ACT).some(k=>ACT[k].sk===sk&&s.unlocked.includes(k)))
+      .sort((a,b)=>craftRev(a)-craftRev(b));
     if(!inTier.length)return "";
     return `<div class="sub" style="color:var(--gold);margin:10px 0 5px;font-variant:small-caps;letter-spacing:.1em">${T.t}</div>`+
      inTier.map(sk=>{
-    const acts=Object.keys(ACT).filter(k=>ACT[k].sk===sk&&s.unlocked.includes(k));
+    const acts=Object.keys(ACT).filter(k=>ACT[k].sk===sk&&s.unlocked.includes(k)).sort((a,b)=>rev(a)-rev(b));
     if(!acts.length)return "";
     const on=onCraft(s,sk);
     const who=on.length?`<span style="color:${on.every(o=>!o.working)?"var(--rust)":"var(--patina)"}">${
