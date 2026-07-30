@@ -842,6 +842,10 @@ function tick(){
 function learnCheck(s){
  REC.forEach(r=>{ if(!r.learn||s.known.includes(r.id))return;
   if(r.pre&&!s.known.includes(r.pre))return;          // never the second before the first
+  // you only work a recipe out once you have made its base materials — no learning
+  // how a plain wrap is cut before you have woven any cloth. Rare sea things
+  // (amber, glass) are not gated, so those recipes still show as a goal to sail for.
+  if(!Object.keys(r.cost||{}).every(k=>(s.tot[k]||0)>0))return;
   if(myL(s,r.learn.sk)>=r.learn.lv){ s.known.push(r.id);
    log(`You work out how a ${r.en.toLowerCase()} is made.`,"y"); toast("Learned: "+r.en); } });
 }
