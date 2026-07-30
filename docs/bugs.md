@@ -52,6 +52,12 @@ to raise the odds of a mid-tier one you *do* want appearing.
 - All **three** offers that come should be of that profession.
 - The **cost and cooldown increase every time** you use it.
 
+## 6. 🔴 Missing inputs for a work aren't clearly color-coded
+On the Work tab, a work you can't currently run for lack of inputs should be
+color-coded so it's obvious at a glance. There's a partial `.pick.want` rust style
+already, but it's not clear enough / doesn't call out *which* input is short —
+ideally the "uses ore, charcoal" line reds the specific missing resource(s).
+
 ---
 
 *Add new bugs above this line as they come in.*
