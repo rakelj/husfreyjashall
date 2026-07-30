@@ -58,6 +58,14 @@ color-coded so it's obvious at a glance. There's a partial `.pick.want` rust sty
 already, but it's not clear enough / doesn't call out *which* input is short —
 ideally the "uses ore, charcoal" line reds the specific missing resource(s).
 
+## 7. 🔴 Tool unlock order should follow the tier chain
+Tools for raw-material crafts (forage, fish, wood, mine, herd) should become
+available before tools for processed crafts (smith, weave, keep), before products
+(cook, sail, ship). Right now tool recipes unlock purely by their own `learn.sk`
+level (`REC` tier-1 tools), independent of tier, so a product-craft tool can be
+worked out before a raw-craft one. Gate/order them so raw → processed → product,
+matching the chain (and the dependency order the road already teaches in).
+
 ---
 
 *Add new bugs above this line as they come in.*
