@@ -336,6 +336,14 @@ const PORTS=[
  {id:"kaenu",  sea:"east", en:"Kœnugarðr",      mins:10.0,share:0.38, fit:176, stores:156, wear:68, silver:[1260,1980], comp:{silk:.65,glass:.5,amber:.4}},
  {id:"micklg", sea:"east", en:"Miklagarðr",     mins:12.0,share:0.40, fit:230, stores:200, wear:78, silver:[1740,2640], comp:{silk:.75,glass:.55}}
 ];
+/* The kaupstefna — a simple home market. What a unit of each good is worth in silver;
+   the market buys your overflow below this and sells staples above it (a real spread),
+   a few offers at a time, changed on a clock. Rare things are never traded here — they
+   can only be spent, so the sea stays the only way to them. */
+const WORTH={food:0.4,herbs:2.4,kelp:0.5,fish:0.6,timber:0.4,bark:2.4,ore:0.7,clay:2.4,wool:0.8,horn:2.4,
+ salt:1.1,charcoal:1.0,iron:2.2,yarn:1.2,cloth:2.8,stores:1.7,meals:2.2,sailcloth:5,hull:3};
+const MARKET_EVERY=5*60000;          // the stalls change this often
+const MARKET_BUYABLE=["stores","timber","food","iron","cloth","salt","charcoal","yarn"];
 /* staged opening — the tutorial IS the game */
 /* The way on — a numbered road through the first hour. Each step is taken, not given. */
 /* The way on. Not a tutorial that stops, but a spine that runs the whole length of
@@ -555,10 +563,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.16.0";
+const BUILD="v0.16.1";
 const BUILT="30 Jul 2026";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="The sea is rebuilt — build a fleet, sail three tiers of ship across four waters, and find charts to reach farther.";
+const NOTES="A kaupstefna on the Sea tab — barter your overflow for silver, or buy what runs short.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -772,7 +780,7 @@ function fresh(){
  return{t:0,res,tot,xp,act:null,prog:0,eq:blankEq(),
   crew:[],hall:1,unlocked:["woods","hew"],known:[],items:{},
   intro:0,q:{er:[],dy:[],se:[],ch:[]},qt:{er:0,dy:0,se:0},life:{},lev:{},
-  offers:[],offerT:0,fleet:[],trips:[],opened:{},sailed:[],log:[],used:[],lore:{},studies:[],
+  offers:[],offerT:0,fleet:[],trips:[],opened:{},sailed:[],market:[],marketT:0,log:[],used:[],lore:{},studies:[],
   got:[],marks:{},mseen:{},seekN:0,seen:0,flow:null,unpaid:false,starved:false,pick:null,shut:{},want:null,auto:{tiller:1,caulk:1,board:1,hand:1},craftSeen:[],goal:null,kept:0,feastBoost:0,iseen:0,chDone:[],table:0,tableMax:0,tableLift:0,tkn:{er:0,dy:0,se:0},
   ev:{hires:0,crafts:0,voyages:0,sells:0,mends:0,levels:0,lores:0,tables:0}, did:{},
   age:0,picking:false,picks:[],orl:{},orlog:0};
@@ -860,6 +868,7 @@ function advance(dt){
  }
  // recruit offers refresh
  s.offerT-=dt;if(s.offerT<=0||s.offers.length===0)rollOffers();
+ s.marketT-=dt;if(s.marketT<=0||!s.market.length)rollMarket(s);
  // quests
  ["er","dy","se"].forEach(b=>{
   s.qt[b]+=dt;
@@ -1516,6 +1525,32 @@ function buildShip(tier){const s=S; const d=shipDef(tier); if(!d)return;
  s.fleet.push({tier,cond:100,last:null});
  log(`A ${d.en.toLowerCase()} stands on the sand, sound and tarred.`,"b"); toast(d.en+" built"); maybeDraw();
 }
+/* the kaupstefna — a handful of barter offers, refreshed on a clock. Sell your overflow
+   below worth, buy staples above it; each offer is one-shot until the stalls change, so
+   it is a place to turn a surplus, never a conversion engine. */
+function rollMarket(s){
+ const cap=capOf(s), scale=1+0.6*(s.age||0)+0.15*s.hall;
+ const sellable=RES.filter(k=>k!=="silver"&&WORTH[k]);
+ const pick=a=>a[Math.floor(Math.random()*a.length)];
+ const used={}, offers=[];
+ for(let n=0;n<3;n++){ let k,g=0; do{k=pick(sellable);}while(used[k]&&g++<12); used[k]=1;
+  const qty=Math.max(5,Math.round((cap[k]||120)*(0.15+Math.random()*0.2)));
+  offers.push({kind:"sell",res:k,qty,silver:Math.max(1,Math.round(WORTH[k]*qty*(0.6+Math.random()*0.2)))}); }
+ for(let n=0;n<2;n++){ const k=pick(MARKET_BUYABLE);
+  const qty=Math.max(5,Math.round(20*scale*(0.6+Math.random()*0.9)));
+  offers.push({kind:"buy",res:k,qty,silver:Math.round(WORTH[k]*qty*(1.35+Math.random()*0.3))}); }
+ s.market=offers; s.marketT=MARKET_EVERY;
+}
+function doTrade(i){const s=S,o=s.market[i]; if(!o)return;
+ if(o.kind==="sell"){ if((s.res[o.res]||0)<o.qty){toast(`You have not ${o.qty} ${o.res} to sell`);return;}
+  s.res[o.res]-=o.qty; give(s,"silver",o.silver);
+  log(`Sold ${o.qty} ${o.res} at the kaupstefna for ${o.silver} silver.`,"g"); toast(`+${o.silver} silver`);
+ } else { if(s.res.silver<o.silver){toast(`Wants ${o.silver} silver`);return;}
+  s.res.silver-=o.silver; grant(s,o.res,o.qty); clampR(s);
+  log(`Bought ${o.qty} ${o.res} at the kaupstefna for ${o.silver} silver.`,"g"); toast(`+${o.qty} ${o.res}`);
+ }
+ s.market.splice(i,1); maybeDraw();
+}
 function upHall(){const s=S,h=HALL[s.hall+1];if(!h)return;
  const nsk=Object.keys(SK).filter(k=>myL(s,k)>=h.need.sk[1]).length;
  if(nsk<h.need.sk[0])return;
@@ -1824,6 +1859,16 @@ function view_craft(s){
 }
 function view_sea(s){
  let h="";
+ // ── the kaupstefna (home market) ──
+ h+=sect(s,"market","The kaupstefna",`stalls change in ${dur(s.marketT)}`,
+  (s.market.length?s.market.map((o,i)=>{
+    const can=o.kind==="sell"?(s.res[o.res]||0)>=o.qty:s.res.silver>=o.silver;
+    return `<div class="row"><span>${o.kind==="sell"?`Sell <b>${o.qty} ${o.res}</b>`:`Buy <b>${o.qty} ${o.res}</b>`}
+      <div class="sub">${o.kind==="sell"?`they give ${o.silver} silver`:`they ask ${o.silver} silver`}${o.kind==="sell"?` · you have ${f(s.res[o.res]||0)}`:""}</div></span>
+      <button class="${o.kind==="sell"&&can?"take":""}" data-trade="${i}" ${can?"":"disabled"}>${o.kind==="sell"?"sell":"buy"}</button></div>`;
+  }).join(""):`<div class="note">The stalls are being set out.</div>`)
+  +`<div class="note" style="margin-top:5px">Barter your overflow for silver, or buy a little of what runs short. The stalls change every little while, and rare things are never sold here.</div>`,
+  true);
  h+=pilotCard(s);
  const idle=s.fleet.map((sh,i)=>({sh,i})).filter(x=>!tripOf(s,x.i));
  // ── the fleet ──
@@ -2194,7 +2239,7 @@ function paint(){
 /* structure is rebuilt only when something structural actually changed */
 function stateSig(){const s=S;
  return [tab,s.unlocked.join(""),s.crew.length,s.items.length,s.known.join(""),s.intro,s.hall,
-  s.fleet.map(sh=>sh.tier+Math.round(sh.cond/5)).join(",")+"|"+s.trips.map(t=>t.ship+t.dest+(t.home?"H":"")).join(",")+"|"+Object.keys(s.opened||{}).length,s.act,
+  s.fleet.map(sh=>sh.tier+Math.round(sh.cond/5)).join(",")+"|"+s.trips.map(t=>t.ship+t.dest+(t.home?"H":"")).join(",")+"|"+Object.keys(s.opened||{}).length+"|"+s.market.map(o=>o.kind+o.res+o.qty).join(","),s.act,
   s.crew.map(c=>c.sk+c.act+c.capL+cL(c,c.sk)+Object.values(c.eq).map(x=>x?x.rec:"-").join("")).join("/"),
   Object.values(s.eq).map(x=>x?x.rec:"-").join(""),
   Object.keys(SK).map(k=>myL(s,k)).join(".")+"/"+softCap(s),
@@ -2293,6 +2338,7 @@ function fire(t){
  else if(d.craft)craft(d.craft);
  else if(d.eq){equip(d.eq,d.w==="me"?"me":+d.w); S.pick=null; lastSig=""; maybeDraw();}
  else if(d.un)unequip(d.w==="me"?"me":+d.w,d.un);
+ else if(d.trade!==undefined)doTrade(+d.trade);
  else if(d.sail){const[pid,fi]=d.sail.split("|");sail(pid,+fi);}
  else if(d.build)buildShip(d.build);
  else if(d.land!==undefined){const fi=+d.land;const ti=S.trips.findIndex(t=>t.ship===fi&&t.home);if(ti>=0)land(ti);}
