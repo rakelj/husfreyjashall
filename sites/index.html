@@ -337,13 +337,14 @@ const PORTS=[
  {id:"kaenu",  sea:"east", en:"Kœnugarðr",      mins:10.0,share:0.38, fit:176, stores:156, wear:68, silver:[1260,1980], comp:{silk:.65,glass:.5,amber:.4}},
  {id:"micklg", sea:"east", en:"Miklagarðr",     mins:12.0,share:0.40, fit:230, stores:200, wear:78, silver:[1740,2640], comp:{silk:.75,glass:.55}}
 ];
-/* The kaupstefna — a simple home market. What a unit of each good is worth in silver;
-   the market buys your overflow below this and sells staples above it (a real spread),
-   a few offers at a time, changed on a clock. Rare things are never traded here — they
-   can only be spent, so the sea stays the only way to them. */
+/* The kaupstefna. What a unit of each good is worth in silver; the market buys your
+   overflow below this and sells staples above it (a real spread). Rare things cannot be
+   BOUGHT here — the sea stays the only source — but you may SELL what you have brought
+   home, and a rich market pays far more for it than a poor one. */
 const WORTH={food:0.4,herbs:2.4,kelp:0.5,fish:0.6,timber:0.4,bark:2.4,ore:0.7,clay:2.4,wool:0.8,horn:2.4,
  salt:1.1,charcoal:1.0,iron:2.2,yarn:1.2,cloth:2.8,stores:1.7,meals:2.2,sailcloth:5,hull:3};
 const MARKET_BUYABLE=["stores","timber","food","iron","cloth","salt","charcoal","yarn"];
+const RARE_WORTH={amber:45,whetstone:60,ivory:100,glass:150,silk:240};
 /* staged opening — the tutorial IS the game */
 /* The way on — a numbered road through the first hour. Each step is taken, not given. */
 /* The way on. Not a tutorial that stops, but a spine that runs the whole length of
@@ -564,10 +565,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.0";
+const BUILD="v0.17.1";
 const BUILT="30 Jul 2026";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="The sea is gated now — one ship to start (more through lore and ørlǫg), waters open in turn, and markets open where you land.";
+const NOTES="Rare things can now be sold at a market — a far, rich water pays far more for them.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1574,6 +1575,14 @@ function doTrade(mi,oi){const s=S,mk=s.markets[mi]; if(!mk)return; const o=mk.of
  }
  mk.offers.splice(oi,1); maybeDraw();
 }
+// rare things brought home can be sold (never bought); a richer market pays far more
+const rarePrice=(s,p,k)=>Math.round(RARE_WORTH[k]*marketWealth(p)*(1-Math.max(0.12,0.30-0.05*seaDef(p.sea).reach)));
+function sellRare(mi,k){const s=S,mk=s.markets[mi]; if(!mk)return; if((s.res[k]||0)<1){toast("You have none to sell");return;}
+ const p=portDef(mk.port), amt=rarePrice(s,p,k);
+ s.res[k]-=1; give(s,"silver",amt);
+ log(`Sold ${CN[k].toLowerCase()} at ${p.en} for ${amt} silver.`,"g"); toast(`+${amt} silver`);
+ maybeDraw();
+}
 function upHall(){const s=S,h=HALL[s.hall+1];if(!h)return;
  const nsk=Object.keys(SK).filter(k=>myL(s,k)>=h.need.sk[1]).length;
  if(nsk<h.need.sk[0])return;
@@ -1885,14 +1894,19 @@ function view_sea(s){
  // ── the kaupstefna: only open where you have just landed, and only for a while ──
  if(s.markets.length){
   s.markets.forEach((mk,mi)=>{ const p=portDef(mk.port);
+   const rareRows=COMP.filter(k=>s.res[k]>0).map(k=>
+     `<div class="row"><span>Sell <b>${CN[k]}</b> <span class="mono sub">×${s.res[k]}</span>
+        <div class="sub">${rarePrice(s,p,k)} silver each${seaDef(p.sea).reach>=1?" · a rich market pays well":""}</div></span>
+       <button class="take" data-sellrare="${mi}|${k}">sell one</button></div>`).join("");
    h+=sect(s,"mk_"+mk.port,`Market — ${p.en}`,`open <span id="mkt${mi}">${dur(mk.left)}</span>`,
     (mk.offers.length?mk.offers.map((o,oi)=>{
       const can=o.kind==="sell"?(s.res[o.res]||0)>=o.qty:s.res.silver>=o.silver;
       return `<div class="row"><span>${o.kind==="sell"?`Sell <b>${o.qty} ${o.res}</b>`:`Buy <b>${o.qty} ${o.res}</b>`}
         <div class="sub">${o.kind==="sell"?`they give ${o.silver} silver · you have ${f(s.res[o.res]||0)}`:`they ask ${o.silver} silver`}</div></span>
         <button class="${o.kind==="sell"&&can?"take":""}" data-trade="${mi}|${oi}" ${can?"":"disabled"}>${o.kind==="sell"?"sell":"buy"}</button></div>`;
-    }).join(""):`<div class="note">Everything here is traded away.</div>`)
-    +`<div class="note" style="margin-top:5px">Rare things are never sold here. The stalls close when the market's time runs out.</div>`,
+    }).join(""):`<div class="note">The stalls are traded out.</div>`)
+    +(rareRows?`<div class="sub" style="color:var(--gold);margin:7px 0 2px">Rare things you have brought home</div>`+rareRows:"")
+    +`<div class="note" style="margin-top:5px">Rare things can be sold here but never bought — the sea is their only source. The stalls close when the market's time runs out.</div>`,
     true);
   });
  }
@@ -2288,7 +2302,7 @@ function stateSig(){const s=S;
    c2=Object.entries(r.comp).every(([k,v])=>(s.res[k]||0)>=v);return okl&&c1&&c2?1:0;}).join(""),
   PORTS.map(p=>s.res.stores>=p.stores?1:0).join(""),
   s.away?"A":"-", s.seen?"":"I", rstArmed?"R":"-", s.want||"-", JSON.stringify(s.auto||{}), s.act||"-", s.goal||"-", (s.craftSeen||[]).join(""), Math.floor((Date.now()-(s.kept||0))/60000), atTable(s)?Math.ceil(s.table/30000):0, Math.floor(s.res.silver/5), s.res.hull>=20?1:0, speed, s.trips.some(t=>t.home)?"H":"-",
-  JSON.stringify(s.lore), (s.studies||[]).map(x=>x.id+(x.ready?"!":"")).join(","), MARK.map(m=>markTier(s,m)+(markReady(s,m)?"!":"")).join(""), COMP.map(k=>s.res[k]>0?1:0).join("")
+  JSON.stringify(s.lore), (s.studies||[]).map(x=>x.id+(x.ready?"!":"")).join(","), MARK.map(m=>markTier(s,m)+(markReady(s,m)?"!":"")).join(""), COMP.map(k=>s.res[k]||0).join(",")
  ].join("|");}
 let lastSig="";
 function maybeDraw(){
@@ -2377,6 +2391,7 @@ function fire(t){
  else if(d.eq){equip(d.eq,d.w==="me"?"me":+d.w); S.pick=null; lastSig=""; maybeDraw();}
  else if(d.un)unequip(d.w==="me"?"me":+d.w,d.un);
  else if(d.trade!==undefined){const[mi,oi]=d.trade.split("|");doTrade(+mi,+oi);}
+ else if(d.sellrare){const[mi,k]=d.sellrare.split("|");sellRare(+mi,k);}
  else if(d.sail){const[pid,fi]=d.sail.split("|");sail(pid,+fi);}
  else if(d.build)buildShip(d.build);
  else if(d.land!==undefined){const fi=+d.land;const ti=S.trips.findIndex(t=>t.ship===fi&&t.home);if(ti>=0)land(ti);}
