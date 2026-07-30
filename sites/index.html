@@ -563,10 +563,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.16.2";
+const BUILD="v0.16.3";
 const BUILT="30 Jul 2026";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Idle now catches up when you return to the tab, not only on a full reload.";
+const NOTES="Crafting a better tool for the work you are on now takes it up at once, if tools come to hand.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1368,7 +1368,10 @@ function craft(id){const s=S,r=REC.find(x=>x.id===id);if(!r)return;
  addItem(s,r.id);
  s.got=[...(s.got||[]),r.id];
  s.ev.crafts++;
- log(`${r.en} finished.`,"y");toast(r.en+" made");maybeDraw();}
+ log(`${r.en} finished.`,"y");toast(r.en+" made");
+ // if it is a better tool for the work you are on, and tools come to hand, take it up now
+ if(s.act) reachForTool(s,ACT[s.act].sk);
+ maybeDraw();}
 function equip(id,who){const s=S; if(!own(s,id))return;
  const r=REC.find(x=>x.id===id); if(!r)return;
  const eq=who==="me"?s.eq:s.crew[who].eq;
