@@ -302,60 +302,64 @@ const PORTS=[
 /* The way on. Not a tutorial that stops, but a spine that runs the whole length of
    the hall — the first steps teach, the last ones are the work of several ages. */
 const INTRO=[
+ /* — the opening: forage, and the first pot, which wants only the woods — */
  {t:"Walk the woods twenty times", val:s=>(s.did&&s.did.woods)||0, n:20, r:{food:50,silver:40},
-  say:"Everyone in the hall eats, and the food comes from somewhere. Ásta waits at the gate — twenty-five silver, and she gathers for you always."},
- {t:"Take Ásta on",               val:s=>s.crew.length, n:1, r:{silver:25,food:40}, un:["shore","net","bog"],
-  say:"A gatherer first, always. With her feeding the hall your own hands are free."},
- {t:"Reach Foraging 3",           val:s=>myL(s,"forage"), n:3, r:{silver:70},
-  un:["tend","herd","cook","burn","smoke","kiln","bloom","spin","loom","fell","deep","scree"],
-  say:"Flock, pot, salt, iron and cloth are yours to work."},
- {t:"Hew twenty timber",          val:s=>s.tot.timber, n:20, r:{silver:60},
-  say:"Woodcraft. Timber for the hall, the kiln and the keel."},
+  say:"Everyone in the hall eats, and the food comes from somewhere. A woman named Ásta waits at the gate — twenty-five silver, and she gathers for you always."},
+ {t:"Take Ásta on",               val:s=>s.crew.length, n:1, r:{silver:25,food:40}, un:["shore"],
+  say:"A gatherer first, always. With her feeding the hall your own hands are free — and the shore is yours to walk too, for its kelp."},
+ {t:"Reach Foraging 3",           val:s=>myL(s,"forage"), n:3, r:{silver:70}, un:["cook"],
+  say:"Enough at the foraging to keep a pot. Cooking wants only what the woods already give — food, and a few herbs."},
+ {t:"Turn up ten herbs",          val:s=>s.tot.herbs, n:10, r:{food:120},
+  say:"The woods give herbs, and nothing else in the hall will find them. A pot wants them."},
+ {t:"Cook five pots",              val:s=>s.tot.meals, n:5, r:{silver:110},
+  say:"Cooking, taught early because it asks nothing but the woods. Food that keeps, and food that lifts a whole hall."},
+ {t:"Set the table",               val:s=>s.ev.tables||0, n:1, r:{silver:170},
+  say:"One pot for every mouth, and every hand works the harder for it."},
+
+ /* — wood, then the meta of marks, lore and the second storey — */
+ {t:"Hew twenty timber",          val:s=>s.tot.timber, n:20, r:{silver:60}, un:["fell"],
+  say:"Woodcraft. Timber for the hall, the kiln and the keel — and old timber gives bark besides."},
  {t:"Take your first mark",       val:s=>Object.values(s.marks||{}).reduce((a,b)=>a+b,0), n:1, r:{silver:100},
   say:"Marks run deeper than one age. They are the long road."},
  {t:"Read your first tier of lore",val:s=>loreRank(s), n:1, r:{silver:130},
   say:"What is read once holds for the whole age."},
- {t:"Raise the hall to two",      val:s=>s.hall, n:2, r:{timber:120,food:80}, un:["rivet","sew"],
-  say:"Room for a second pair of hands, and you may lay a keel."},
+ {t:"Raise the hall to two",      val:s=>s.hall, n:2, r:{timber:120,food:80}, un:["net"],
+  say:"Room for a second pair of hands — and the nets are yours to set."},
 
- /* — every craft, once, in the order the chain runs — */
- {t:"Turn up ten herbs",          val:s=>s.tot.herbs, n:10, r:{food:120},
-  say:"The woods give herbs, and nothing else in the hall will find them."},
+ /* — each craft as its inputs come in: fish, then what keeps it; wool, then cloth;
+      ore, then iron; and last the two that want a finished tier under them — */
+ {t:"Set the nets twenty times",   val:s=>(s.did&&s.did.net)||0, n:20, r:{silver:120}, un:["deep"],
+  say:"Fishing. Fish are not food — they must be salted before they keep."},
+ {t:"Fish the deeps ten times",    val:s=>(s.did&&s.did.deep)||0, n:10, r:{silver:150}, un:["burn"],
+  say:"Slower going, but walrus come up out of the deep water. And kelp, burned, gives the salt that keeps a catch."},
  {t:"Gather fifteen kelp on the shore",val:s=>s.tot.kelp, n:15, r:{silver:80},
   say:"The shore gives less food than the woods, but kelp burns to salt — and salt is the only way fish keeps."},
- {t:"Cook five pots",              val:s=>s.tot.meals, n:5, r:{silver:110},
-  say:"Cooking. Food that keeps, and food that lifts a whole hall."},
- {t:"Set the table",               val:s=>s.ev.tables||0, n:1, r:{silver:170},
-  say:"One pot for every mouth, and every hand works the harder for it."},
- {t:"Set the nets twenty times",   val:s=>(s.did&&s.did.net)||0, n:20, r:{silver:120},
-  say:"Fishing. Fish are not food — they must be salted before they keep."},
- {t:"Fish the deeps ten times",    val:s=>(s.did&&s.did.deep)||0, n:10, r:{silver:150},
-  say:"Slower going, but walrus come up out of the deep water."},
- {t:"Burn ten salt",               val:s=>s.tot.salt, n:10, r:{silver:120},
-  say:"Preserving has two hands to it — the kelp fire, and the salting bench."},
- {t:"Put up thirty winter stores", val:s=>s.tot.stores, n:30, r:{silver:140},
-  say:"Fish and salt together. Stores feed a voyage where fresh food will not."},
- {t:"Shear forty wool",            val:s=>s.tot.wool, n:40, r:{silver:130},
+ {t:"Burn ten salt",               val:s=>s.tot.salt, n:10, r:{silver:120}, un:["smoke"],
+  say:"Preserving. First the kelp fire for salt; the salting bench comes next."},
+ {t:"Put up thirty winter stores", val:s=>s.tot.stores, n:30, r:{silver:140}, un:["tend"],
+  say:"Fish and salt together. Stores feed a voyage where fresh food will not. The flock is next — where cloth begins."},
+ {t:"Shear forty wool",            val:s=>s.tot.wool, n:40, r:{silver:130}, un:["herd","spin"],
   say:"Husbandry. The flock is where all cloth begins."},
- {t:"Spin thirty yarn",            val:s=>s.tot.yarn, n:30, r:{silver:110},
+ {t:"Spin thirty yarn",            val:s=>s.tot.yarn, n:30, r:{silver:110}, un:["loom"],
   say:"Weaving begins at the spindle. Yarn before cloth, always."},
- {t:"Weave fifteen cloth",         val:s=>s.tot.cloth, n:15, r:{silver:160},
-  say:"Cloth for what you wear, and for the sail that carries you."},
- {t:"Dig fifty bog iron",          val:s=>s.tot.ore, n:50, r:{silver:130},
-  say:"Mining. Ore out of the bog, and nowhere else."},
- {t:"Burn twenty charcoal",        val:s=>s.tot.charcoal, n:20, r:{silver:120},
+ {t:"Weave fifteen cloth",         val:s=>s.tot.cloth, n:15, r:{silver:160}, un:["bog"],
+  say:"Cloth for what you wear, and for the sail that carries you. Now the bog, for the ore that makes iron."},
+ {t:"Dig fifty bog iron",          val:s=>s.tot.ore, n:50, r:{silver:130}, un:["scree","kiln"],
+  say:"Mining. Ore out of the bog, and nowhere else. Timber, burned down, makes the charcoal a bloom needs."},
+ {t:"Burn twenty charcoal",        val:s=>s.tot.charcoal, n:20, r:{silver:120}, un:["bloom"],
   say:"No bloom burns hot enough without it."},
- {t:"Smelt twenty iron",           val:s=>s.tot.iron, n:20, r:{silver:180},
-  say:"Smithing. Iron makes tools, and tools make everything faster."},
+ {t:"Smelt twenty iron",           val:s=>s.tot.iron, n:20, r:{silver:180}, un:["sew"],
+  say:"Smithing. Iron makes tools, and tools make everything faster. With cloth and iron both, a boat is within reach."},
 
+ /* — gear, and then the two that stand on a finished tier: sail on cloth, hull on iron — */
  {t:"Make something worth wearing",val:s=>s.ev.crafts, n:1, r:{silver:150},
   say:"Gear is the second way to grow, after the years themselves."},
  {t:"Give gear to one of your people",val:s=>s.crew.filter(c=>Object.values(c.eq).some(Boolean)).length, n:1, r:{stores:50},
   say:"What they wear works as hard as what you wear."},
- {t:"Sew five sailcloth",          val:s=>s.tot.sailcloth, n:5, r:{silver:200},
-  say:"Sailmaking. A wool sail is more work than the hull it drives."},
+ {t:"Sew five sailcloth",          val:s=>s.tot.sailcloth, n:5, r:{silver:200}, un:["rivet"],
+  say:"Sailmaking, once there is cloth to cut. A wool sail is more work than the hull it drives."},
  {t:"Rivet a hull of twenty",      val:s=>s.res.hull, n:20, r:{silver:90},
-  say:"Shipwright. Enough timber and iron in her to float."},
+  say:"Shipwright, last of all — timber and iron riveted until she will float."},
  {t:"Put a boat in the water",     val:s=>s.boat?1:0, n:1, r:{stores:60},
   say:"The sea is where rare things come from, and nowhere else."},
  {t:"Come home from a voyage",     val:s=>lifeEv(s,"voyages"), n:1, r:{comp:"amber"},
@@ -512,8 +516,8 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v15.0";
-const BUILT="29 Jul 2026, 10:14";
+const BUILD="v15.1";
+const BUILT="30 Jul 2026";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2405,7 +2409,7 @@ S=fresh();
 const resumed=loadGame();
 if(!resumed){ rollDaily();rollWeekly();rollOffers(); }
 log("You alone on a cold shore, with nothing and no one. Choose your own work to begin.","b");
-log("A man called Ásta waits at the gate, but you have no silver for him yet.");
+log("A woman named Ásta waits at the gate, but you have no silver for her yet.");
 // catchUp already advances the clock, which spawns work at the proper rate.
 // topping up here would hand you a full board on every reload.
 if(resumed){ catchUp(); if(!S.offers||!S.offers.length)rollOffers(); }
