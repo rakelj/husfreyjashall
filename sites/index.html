@@ -192,8 +192,11 @@ const CN={kelp:"Kelp",fish:"Fish",bark:"Bark",clay:"Clay",horn:"Horn",salt:"Salt
    shape of the hall. */
 const ACT={
  // ── raw ──
- shore:{en:"Walk the shore", sk:"forage",out:{food:1.6,kelp:1.0},secs:4.0,xp:9},
+ // woods is the first work you start with; shore unlocks later. Declared in that
+ // order so the Work-tab list stays stable when shore appears (see §1: every
+ // craft's earlier-unlocked work is declared first).
  woods:{en:"Walk the woods", sk:"forage",out:{food:2.4},  secs:4.4,xp:9,  rare:{herbs:0.22}},
+ shore:{en:"Walk the shore", sk:"forage",out:{food:1.6,kelp:1.0},secs:4.0,xp:9},
  net:  {en:"Set nets",       sk:"fish",  out:{fish:2.4},  secs:5.5,xp:12},
  deep: {en:"Fish the deeps", sk:"fish",  out:{fish:3.0},  secs:7.5,xp:16, rare:{ivory:0.030}},
  hew:  {en:"Hew the coppice",sk:"wood",  out:{timber:2.4},secs:4.5,xp:8},
