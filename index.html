@@ -228,10 +228,10 @@ const REC=[
  {id:"axe0",  en:"Bound axe",     slot:"tool",sk:"wood",  make:"smith",lv:3, cost:{iron:10},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"wood",lv:4}},
  {id:"net0",  en:"Bast net",      slot:"tool",sk:"fish",  make:"weave",lv:3, cost:{cloth:8},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"fish",lv:4}},
  {id:"pick0", en:"Antler pick",   slot:"tool",sk:"mine",  make:"smith",lv:3, cost:{iron:11},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"mine",lv:4}},
- {id:"bask0", en:"Bark basket",   slot:"tool",sk:"forage",make:"wood", lv:5, cost:{timber:26},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"forage",lv:10}},
- {id:"comb0", en:"Horn comb",     slot:"tool",sk:"herd",  make:"wood", lv:6, cost:{timber:30},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"herd",lv:10}},
+ {id:"bask0", en:"Bark basket",   slot:"tool",sk:"forage",make:"wood", lv:5, cost:{timber:10,bark:3},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"forage",lv:10}},
+ {id:"comb0", en:"Horn comb",     slot:"tool",sk:"herd",  make:"wood", lv:6, cost:{timber:12,horn:3},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"herd",lv:10}},
  {id:"tong0", en:"Bone tongs",    slot:"tool",sk:"smith", make:"smith",lv:6, cost:{iron:16},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"smith",lv:10}},
- {id:"weig0", en:"Clay weights",  slot:"tool",sk:"weave", make:"weave",lv:6, cost:{cloth:12}, comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"weave",lv:10}},
+ {id:"weig0", en:"Clay weights",  slot:"tool",sk:"weave", make:"weave",lv:6, cost:{cloth:6,clay:3}, comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"weave",lv:10}},
  {id:"rack0", en:"Salting bench",  slot:"tool",sk:"keep",  make:"wood", lv:6, cost:{timber:34},comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"keep",lv:10}},
  {id:"pot0",  en:"Soapstone pot", slot:"tool",sk:"cook",  make:"smith",lv:6, cost:{iron:15},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"cook",lv:10}},
  {id:"caul0", en:"Caulking iron", slot:"tool",sk:"ship",  make:"smith",lv:6, cost:{iron:18},  comp:{}, bonus:{speed:.14,yield:.08}, learn:{sk:"ship",lv:10}},
@@ -519,7 +519,7 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.15.5";
+const BUILD="v0.15.6";
 const BUILT="30 Jul 2026";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
