@@ -565,10 +565,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.4";
-const BUILT="31 Jul 2026 · 10:02 UTC";
+const BUILD="v0.17.5";
+const BUILT="31 Jul 2026 · 10:25 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="The app now checks for a newer build on the way in and offers a one-tap refresh, so a home-screen hall no longer sticks on an old version.";
+const NOTES="Reading a hall back in now works on iOS — tap “read one in” to take it straight from the clipboard, and the box no longer gets wiped mid-paste.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2185,7 +2185,7 @@ function view_hall(s){
        ?"You have never copied this hall out. If this browser forgets it, it is gone."
        :`It is ${dur(since)} since you copied this hall out.`}</div>`;})()}
    <div class="sub" style="margin-top:8px">Keeping a copy</div>
-   <div class="note">Your hall lives in this browser alone. Copy it out and you can carry it anywhere — paste one straight into the box below.</div>
+   <div class="note">Your hall lives in this browser alone. Copy it out and you can carry it anywhere — then just tap <b>read one in</b> to take it from the clipboard (or paste it into the box first).</div>
    <textarea id="savebox" placeholder="paste a hall here, then press read one in" style="width:100%;height:60px;margin-top:7px;background:#0e131a;color:var(--dim);
      border:1px solid var(--edge);border-radius:0;font-family:var(--mono);font-size:10px;padding:6px"></textarea>
    <div class="row"><button id="dlsv" style="flex:1">save to a file</button><button id="expt" style="flex:1">copy it out</button></div>
@@ -2313,6 +2313,11 @@ function stateSig(){const s=S;
 let lastSig="";
 function maybeDraw(){
  if(holding){pendingDraw=true;return;}      // a button is under a finger — leave the DOM alone
+ // the save box is a live text field; rebuilding the view mid-tick would destroy it
+ // and wipe whatever is being typed or pasted (on iOS, a paste can't survive that).
+ // Hold the redraw while it has focus — the next tick after it blurs catches up.
+ const sb=document.getElementById("savebox");
+ if(sb&&document.activeElement===sb){pendingDraw=true;return;}
  const g=stateSig();if(g!==lastSig){lastSig=g;draw();paint();}
 }
 function pilotCard(s){
@@ -2420,9 +2425,7 @@ function fire(t){
    try{ b.setSelectionRange(0,b.value.length); }catch(_){}
    try{ navigator.clipboard.writeText(b.value); toast("Copied — keep it somewhere safe"); }
    catch(_){ toast("It is selected — copy it"); } }
- else if(t.id==="impt"){ const b=document.getElementById("savebox");
-   if(!b.value.trim()){ b.focus(); toast("Paste a hall into the box first"); }
-   else if(importSave(b.value)){ toast("Hall read in — opening it"); setTimeout(()=>location.reload(),700); } }
+ else if(t.id==="impt") readIn();
  else if(t.id==="introok"){ S.seen=1; delete S.away; drawIntro(); lastSig=""; maybeDraw(); }
  else if(t.id==="awayok"){ delete S.away; drawAway(); }
  else if(t.id==="rst"){
@@ -2509,6 +2512,21 @@ function exportSave(){
  try{ S.savedAt=Date.now();
   const blob=btoa(unescape(encodeURIComponent(JSON.stringify({v:SAVEVER,s:S}))));
   return blob; }catch(_){ return ""; }
+}
+/* Reading a hall back in. On iOS, long-pressing to paste into the little box is
+   fiddly and the pasted text often can't be made to stick, so a tap here reads
+   the clipboard straight off (works on https, within this tap's gesture) when
+   the box is empty — copy a hall on any device, tap "read one in", done. Falls
+   back to whatever is already in the box, or asks you to paste if all else fails. */
+async function readIn(){
+ const b=document.getElementById("savebox");
+ let txt=b?b.value.trim():"";
+ if(!txt){
+  try{ txt=((await navigator.clipboard.readText())||"").trim(); if(b&&txt)b.value=txt; }
+  catch(_){ /* no clipboard permission / not supported — fall through */ }
+ }
+ if(!txt){ if(b)b.focus(); toast("Copy a hall first, or paste one into the box"); return; }
+ if(importSave(txt)){ toast("Hall read in — opening it"); setTimeout(()=>location.reload(),700); }
 }
 function importSave(txt){
  try{
