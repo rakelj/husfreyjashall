@@ -50,7 +50,9 @@ button > *{pointer-events:none}
 .pick:active{transform:scale(.985)}
 button.take{background:var(--patina);border-top-color:#9ab88e;color:#15110d;font-weight:600}
 button.take:active:not(:disabled){background:#9ab88e;color:#15110d}
-button.swap{background:transparent;box-shadow:none;border-top:1px dashed var(--edge);color:var(--dim)}
+button.swap{background:transparent;box-shadow:none;border:0;border-bottom:1px dashed var(--edge);
+ color:var(--dim);min-height:30px;padding:3px 7px;font-size:10.5px;letter-spacing:.04em;flex:0 0 auto}
+button.swap.arm{color:var(--gold);border-bottom-color:var(--gold)}
 .q.ready{border-left-color:var(--patina)}
 .give{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:62%}
 .give button{min-height:46px;padding:8px 14px}
@@ -81,7 +83,7 @@ button.swap{background:transparent;box-shadow:none;border-top:1px dashed var(--e
 #tabs button{flex:1;padding:8px 1px;font-size:11.5px;min-height:48px;letter-spacing:.03em}
 #tabs button.on{background:var(--gold);color:#15110d;border-top-color:#f0bd5e;font-weight:600}
 #tabs button .dot{display:inline-block;width:6px;height:6px;border-radius:0;transform:rotate(45deg);background:var(--gold);vertical-align:middle;margin-left:3px}
-main{padding:12px 12px 60px;max-width:640px;margin:0 auto}
+main{padding:12px calc(14px + env(safe-area-inset-right,0px)) 60px calc(14px + env(safe-area-inset-left,0px));max-width:640px;margin:0 auto}
 /* a plank, with the groove cut above it and the lamplight on its upper edge */
 .card{background:var(--p1);border:0;border-top:1px solid var(--edge);border-radius:0;
  padding:12px 13px 13px;margin-bottom:10px;box-shadow:0 -2px 0 var(--line),0 2px 5px rgba(0,0,0,.4)}
@@ -565,10 +567,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.5";
-const BUILT="31 Jul 2026 · 10:25 UTC";
+const BUILD="v0.17.6";
+const BUILT="31 Jul 2026 · 10:35 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Reading a hall back in now works on iOS — tap “read one in” to take it straight from the clipboard, and the box no longer gets wiped mid-paste.";
+const NOTES="Swapping a task now takes less room and asks twice before it spends silver, and a tap riding a scroll no longer fires by mistake — fewer fat-finger mishaps on a phone.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1120,14 +1122,22 @@ function topUp(s){
   while(s.q[b].length<bandCap(s,b)){const q=newQ(s,b);if(!q)break;s.q[b].push(q);}});
 }
 const rerollCost=s=>Math.round(30*(1+0.6*(s.age||0)));
+let swapArm=null,swapT=null;   // which task's swap is armed — a tap costs silver, so it asks twice
 function reroll(band,i){
  const s=S,arr=s.q[band],q=arr[i];
  if(!q||q.done||band==="ch")return;
  const c=rerollCost(s);
  if(s.res.silver<c){toast(`${c} silver to set it aside`);return;}
+ const key=band+"|"+i;
+ if(swapArm!==key){                                   // first tap — arm it, spend nothing yet
+  swapArm=key; clearTimeout(swapT);
+  swapT=setTimeout(()=>{swapArm=null;lastSig="";maybeDraw();},4000);
+  toast(`Tap again to swap · ${c} silver`); lastSig=""; maybeDraw(); return;
+ }
+ clearTimeout(swapT); swapArm=null;
  s.res.silver-=c; arr.splice(i,1);
  const n=newQ(s,band,{skipOpening:true,avoid:q.tr}); arr.splice(i,0,n||q);
- log("You set that work aside for another.","b");maybeDraw();
+ log("You set that work aside for another.","b");lastSig="";maybeDraw();
 }
 function collect(band,i,choice){
  const s=S,arr=s.q[band],q=arr[i];
@@ -2065,7 +2075,7 @@ function view_quest(s){
     } else {
      foot=`<div class="row" style="padding-top:5px"><span class="r">${pay}</span>`+
       (q.done?`<button class="take" data-coll="${b}|${i}|0">take it</button>`
-        :b==="ch"?"":`<button class="swap" data-rr="${b}|${i}" ${s.res.silver>=rerollCost(s)?"":"disabled"}>swap · ${rerollCost(s)}</button>`)+`</div>`;
+        :b==="ch"?"":(()=>{const armed=swapArm===(b+"|"+i);return `<button class="swap${armed?" arm":""}" data-rr="${b}|${i}" ${s.res.silver>=rerollCost(s)?"":"disabled"}>${armed?"sure?":"swap"} · ${rerollCost(s)}</button>`;})())+`</div>`;
     }
     return `<div class="q ${q.done?"ready":""}"><div class="t">${q.t}</div>
      <div class="p"><span id="qp${b}${i}">${nfm(pv)}</span> / ${nfm(q.n)}</div>
@@ -2303,7 +2313,7 @@ function stateSig(){const s=S;
   Object.keys(SK).map(k=>myL(s,k)).join(".")+"/"+softCap(s),
   s.offers.map(o=>o.name+o.cost).join(","),
   ["er","dy","se","ch"].map(b=>s.q[b].map(q=>q.t+(q.done?1:0)).join("")).join("|"), s.intro+(introReady(s)?"!":""),
-  Object.keys(s.ready||{}).join(","), fireArmed||"-", s.picking?"P"+s.picks.join(""):"-", s.age, s.orlog, JSON.stringify(s.orl||{}),
+  Object.keys(s.ready||{}).join(","), fireArmed||"-", swapArm||"-", s.picking?"P"+s.picks.join(""):"-", s.age, s.orlog, JSON.stringify(s.orl||{}),
   REC.map(r=>{const okl=myL(s,r.make)>=r.lv,c1=Object.entries(r.cost).every(([k,v])=>s.res[k]>=v),
    c2=Object.entries(r.comp).every(([k,v])=>(s.res[k]||0)>=v);return okl&&c1&&c2?1:0;}).join(""),
   PORTS.map(p=>s.res.stores>=p.stores?1:0).join(""),
@@ -2453,9 +2463,10 @@ try{ document.body.style.cursor="pointer"; }catch(_){}
    Safari withholds a click whenever anything under the finger changes between
    press and release — and paint() changes numbers ten times a second — so the
    click never came and the tap was simply lost. Pointer events always arrive. */
-let downOn=null, downX=0, downY=0, firedAt=0;
+let downOn=null, downX=0, downY=0, firedAt=0, lastScroll=0;
 function doTap(t){
  if(!t||t.disabled) return;
+ if(Date.now()-lastScroll<250) return;   // a tap in the wake of a scroll is almost always a mis-hit
  firedAt=Date.now();
  freeze();
  // choosing a work must look instant, even though the rebuild is held back
@@ -2475,6 +2486,13 @@ document.addEventListener("pointerdown",e=>{
  downOn=e.target.closest(HIT); downX=e.clientX; downY=e.clientY;
  if(downOn) freeze();
 },{passive:true});
+// once the finger travels past the slop it is a scroll, not a tap — drop the pending
+// press now so neither pointerup nor Safari's scroll-time pointercancel can fire it
+document.addEventListener("pointermove",e=>{
+ if(downOn&&Math.hypot(e.clientX-downX,e.clientY-downY)>TAP_SLOP) downOn=null;
+},{passive:true});
+// remember when the page last scrolled, so a tap riding a scroll's tail is ignored
+window.addEventListener("scroll",()=>{ lastScroll=Date.now(); },{passive:true});
 document.addEventListener("pointerup",e=>{
  const moved=Math.hypot(e.clientX-downX,e.clientY-downY);
  if(downOn&&moved<=TAP_SLOP) doTap(downOn);
