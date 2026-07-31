@@ -565,10 +565,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.3";
-const BUILT="31 Jul 2026 · 09:29 UTC";
+const BUILD="v0.17.4";
+const BUILT="31 Jul 2026 · 10:02 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Hands now down tools when the purse runs empty instead of working the stores away for nothing, the Sea tab shows an M while a kaupstefna is open, and read-times read as m/s.";
+const NOTES="The app now checks for a newer build on the way in and offers a one-tap refresh, so a home-screen hall no longer sticks on an old version.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2628,6 +2628,40 @@ if(canSave){
  window.addEventListener("pagehide",saveGame);
  window.addEventListener("beforeunload",saveGame);
 }
+
+/* ---------------- keeping the app fresh ----------------
+   Added to a phone's home screen this runs as a standalone web app, and iOS
+   holds onto the cached page hard — even a force-quit and relaunch can still
+   show an old build. So on launch, and each time the app is brought back to the
+   front, ask the network — bypassing every cache — what build is live. If it is
+   newer than the one running, a bar drops down offering a one-tap refresh that
+   loads the fresh page (a fresh URL, so the cache can't serve the old one).
+   Offline or blocked, it stays silent and you keep playing on what you have. */
+let freshT=0;
+async function checkFresh(){
+ if(location.protocol==="file:")return;                    // a local test copy — nothing to fetch
+ if(Date.now()-freshT<30000)return; freshT=Date.now();     // at most once every 30s
+ try{
+  const r=await fetch(location.pathname+"?_fresh="+Date.now(),{cache:"no-store"});
+  if(!r.ok)return;
+  const m=(await r.text()).match(/const BUILD="([^"]+)"/);
+  if(m&&m[1]&&m[1]!==BUILD)showFresh(m[1]);
+ }catch(_){}
+}
+function showFresh(v){
+ if(document.getElementById("fresh"))return;
+ const b=document.createElement("div"); b.id="fresh";
+ b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:9999;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;"
+  +"text-align:center;cursor:pointer;background:var(--gold);color:var(--ink);"
+  +"font:600 13px/1.35 'IBM Plex Sans',system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.55)";
+ b.innerHTML=`A new build (${v}) has landed — <b>tap to bring it in</b>`;
+ b.onclick=()=>{ try{ if(canSave)saveGame(); }catch(_){}; location.replace(location.pathname+"?v="+encodeURIComponent(v)); };
+ document.body.appendChild(b);
+}
+checkFresh();
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible")checkFresh(); });
+window.addEventListener("focus",checkFresh);
+window.addEventListener("pageshow",checkFresh);
 
 </script>
 </body>
