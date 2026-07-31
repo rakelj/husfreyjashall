@@ -567,10 +567,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.8";
-const BUILT="31 Jul 2026 · 15:26 UTC";
+const BUILD="v0.17.9";
+const BUILT="31 Jul 2026 · 15:31 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="At sea: each ship's own voyage time shows on her sail button and her strengths in the fleet, a ship that can't be sent now says why, and the market is named for the kaupstefna.";
+const NOTES="Legibility: a work you can't run reds the input you're short on, the flow panel shows when the purse runs empty, and the Crew tab now names your own work, not just the crew's.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1723,7 +1723,7 @@ function view_work(s){
       return `<button class="pick ${s.act===k?"on":""} ${want?"want":""}" data-act="${k}" data-who="me">
        <b>${x.en}</b><small>${Object.entries(x.out).map(([r,v])=>"+"+v+" "+r).join(", ")} · ${x.secs}s${
         x.rare?" · "+Object.keys(x.rare)[0]:""}</small>${
-        x.use?`<span class="who">uses ${Object.entries(x.use).map(([r,v])=>v+" "+r).join(", ")}</span>`:""}</button>`;}).join("")
+        x.use?`<span class="who">uses ${Object.entries(x.use).map(([r,v])=>`<span${(s.res[r]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${r}</span>`).join(", ")}</span>`:""}</button>`;}).join("")
      +`</div></div>`;}).join("");}).join("")
    +`${s.unlocked.length<19?`<div class="note" style="margin-top:4px">More work opens as you go.</div>`:""}
    ${TIER(s,"hand")?`<button data-auto="hand" style="margin-top:8px;width:100%;${autoOn(s,"hand")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"hand")?"tools come to hand":"you change tools yourself"}</button>`:""}</div>`;
@@ -1754,7 +1754,7 @@ function flowCard(s){
   const x=f[k], net=x.net, full=cap[k]&&s.res[k]>=cap[k]-0.5;
   const till=net>0.01&&cap[k]?(cap[k]-s.res[k])/net:net<-0.01?s.res[k]/-net:null;
   const note = k==="silver"
-   ? `<span style="color:var(--dim)">wages, paid as the work is done — silver comes in when you take work or land a voyage</span>`
+   ? `<span style="color:var(--dim)">wages, paid as the work is done — silver comes in when you take work or land a voyage${net<-0.01&&s.res.silver>0?` · <span style="color:var(--rust)">purse empty in ${dur(s.res.silver/-net*60000)}</span>`:""}</span>`
    : full?`<span style="color:var(--gold)">full — what comes in is lost</span>`
    : till!==null&&till<600?`<span style="color:${net>0?"var(--dim)":"var(--rust)"}">${net>0?"full":"empty"} in ${dur(till*60000)}</span>`:"&nbsp;";
   return `<div class="row" data-flow="${k}" style="cursor:pointer;${sel===k?"border-left:2px solid var(--gold);padding-left:8px;margin-left:-10px":""}">
@@ -1771,7 +1771,10 @@ function flowCard(s){
 }
 function view_crew(s){
  let h="";
-  h+=`<div class="card"><h2>You</h2>${eqHtml(s.eq,"me")}</div>`;
+  const meR=runner(s,null);
+  h+=`<div class="card"><h2>You</h2>${meR
+    ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.entries(meR.a.use).map(([k,v])=>`<span${(s.res[k]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${k}</span>`).join(", ")}`:""}</div>`
+    :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}${eqHtml(s.eq,"me")}</div>`;
   s.crew.forEach((c,i)=>{const r=runner(s,c);
    const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]);
    const capped=cL(c,r.a.sk)>=(c.capL||99);

@@ -62,11 +62,15 @@ to raise the odds of a mid-tier one you *do* want appearing.
 - All **three** offers that come should be of that profession.
 - The **cost and cooldown increase every time** you use it.
 
-## 6. 🔴 Missing inputs for a work aren't clearly color-coded
+## 6. ✅ Missing inputs for a work aren't clearly color-coded
 On the Work tab, a work you can't currently run for lack of inputs should be
 color-coded so it's obvious at a glance. There's a partial `.pick.want` rust style
 already, but it's not clear enough / doesn't call out *which* input is short —
 ideally the "uses ore, charcoal" line reds the specific missing resource(s).
+
+**Fixed (v0.17.9):** the "uses …" line on each work now reds the specific input(s)
+you're short on (alongside the existing `.pick.want` whole-button cue). The player's
+work line on the Crew tab reds its short inputs the same way.
 
 ## 7. 🔴 Tool unlock order should follow the tier chain
 Tools for raw-material crafts (forage, fish, wood, mine, herd) should become
@@ -107,10 +111,15 @@ that port; different ports open separate markets. Needs a deliberate rule.
 (Ties into #1's "bigger boat holds more" and the existing `marketWealth` scaling —
 keep them coherent.)
 
-## 9. 🔴 Flow panel: show time-to-empty for negative flows
+## 9. ✅ Flow panel: show time-to-empty for negative flows
 Under "What is moving", tapping a resource whose net flow is **negative** should
 also show how long until it runs out (time-to-empty), the mirror of the "full in
 Xm" shown for positive flows.
+
+**Fixed (v0.17.9):** ordinary resources already showed "empty in Xm" when draining;
+the gap was **silver**, whose note was hard-coded to the wages explanation. It now
+appends "· purse empty in Xm" (red) whenever silver is running down — the one flow
+that actually goes negative in normal play.
 
 ## 10. ✅ Times shown as decimal minutes instead of m/s
 Some times render like "2.8 minutes" (seen in Lore, possibly elsewhere) — should be
@@ -127,8 +136,12 @@ Byproducts, rare mats at sea, market offers, and sea charts should all be driven
 a single **luck** stat. Luck comes from amulets; the first (Amber bead) is **18%**,
 probably too high. Design a coherent luck system and rebalance the amulet line.
 
-## 12. 🔴 Crew tab should show what each hand is working on
+## 12. ✅ Crew tab should show what each hand is working on
 The Crew tab doesn't say what each person (and you) is currently working on. Add it.
+
+**Fixed (v0.17.9):** the crew cards already named each hand's work and output; the gap
+was the **You** card, which showed only equipment. It now shows your current work,
+its output/rate, and its inputs (reddened when short) — or a prompt to pick one.
 
 ## 13. 🔴 Remove quick-equip popups; highlight in-slot instead
 The shortcut equip popups (crew equipment, and the player's on the Work panel)
