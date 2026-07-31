@@ -179,6 +179,7 @@ const SK={forage:"Foraging",fish:"Fishing",wood:"Woodcraft",mine:"Mining",herd:"
  cook:"Cooking",sail:"Sailmaking",ship:"Shipwright"};
 const TIERS=[["Raw","forage fish wood mine herd"],["Processed","smith weave keep"],["Product","cook sail ship"]]
  .map(([t,k])=>({t,ks:k.split(" ")}));
+const craftTier=sk=>TIERS.findIndex(T=>T.ks.includes(sk));   // 0 raw · 1 processed · 2 product
 /* raw · processed · product, in the order the chain runs */
 const RES=["food","herbs","kelp","fish","timber","bark","ore","clay","wool","horn",
  "salt","charcoal","iron","yarn","cloth","stores","meals","sailcloth","hull","silver"];
@@ -428,8 +429,8 @@ const INTRO=[
   say:"The finer gear is only ever shown to you at sea. Sail for it."},
  {t:"Raise the hall to five",      val:s=>s.hall, n:5, r:{silver:2600},
   say:"Five at the board, and the stores to feed them."},
- {t:"Sail the east way",           val:s=>(s.sailed||[]).some(pid=>{const p=portDef(pid);return p&&p.sea==="east";})?1:0, n:1, r:{comp:"silk"},
-  say:"The long water. Silk comes from there, and little else does."},
+ {t:"Sail every water",            val:s=>new Set((s.sailed||[]).map(pid=>(portDef(pid)||{}).sea).filter(Boolean)).size, n:SEAS.length, r:{comp:"silk"},
+  say:"The waters open in turn — home, then the western and northern seas, then the long eastern way. Put a keel into each."},
  {t:"Raise the hall to six",       val:s=>s.hall, n:6, r:{silver:5000},
   say:"What was once the greatest hall you could raise. It is not, any longer."},
  {t:"Reach 40 in any craft",       val:s=>Math.max(...Object.keys(SK).map(k=>myL(s,k))), n:40, r:{comp:"glass"},
@@ -567,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.7";
-const BUILT="31 Jul 2026 · 10:41 UTC";
+const BUILD="v0.17.11";
+const BUILT="31 Jul 2026 · 18:33 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Two iOS fixes: the “new build” bar now actually brings the update in, and reading a hall back no longer sticks on “opening it” — both stopped leaning on a page reload the home-screen app wouldn't do.";
+const NOTES="Tools now come out along the chain — a raw-craft tool before a processed one before a product — and the Work panel's quick-equip shortcut is gone, so tools come to hand by the ørlǫg.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -877,7 +878,7 @@ function advance(dt){
  // recruit offers refresh
  s.offerT-=dt;if(s.offerT<=0||s.offers.length===0)rollOffers();
  for(let mi=s.markets.length-1;mi>=0;mi--){ s.markets[mi].left-=dt;
-  if(s.markets[mi].left<=0){ log(`The market at ${portDef(s.markets[mi].port).en} has closed.`,"b"); s.markets.splice(mi,1); } }
+  if(s.markets[mi].left<=0){ log(`The kaupstefna at ${portDef(s.markets[mi].port).en} has closed.`,"b"); s.markets.splice(mi,1); } }
  // quests
  ["er","dy","se"].forEach(b=>{
   s.qt[b]+=dt;
@@ -902,6 +903,10 @@ function learnCheck(s){
   // how a plain wrap is cut before you have woven any cloth. Rare sea things
   // (amber, glass) are not gated, so those recipes still show as a goal to sail for.
   if(!Object.keys(r.cost||{}).every(k=>(s.tot[k]||0)>0))return;
+  // tools follow the chain: a processed-craft tool waits on knowing a raw-craft tool,
+  // a product-craft tool on a processed one — raw → processed → product
+  if(r.slot==="tool"){ const ti=craftTier(r.sk);
+   if(ti>0 && !REC.some(x=>x.slot==="tool"&&s.known.includes(x.id)&&craftTier(x.sk)===ti-1)) return; }
   if(myL(s,r.learn.sk)>=r.learn.lv){ s.known.push(r.id);
    log(`You work out how a ${r.en.toLowerCase()} is made.`,"y"); toast("Learned: "+r.en); } });
 }
@@ -955,6 +960,8 @@ function flows(s){
  one(null,-1); s.crew.forEach((c,i)=>one(c,i));
  const eat=eatRate(s)*60; if(eat>0) add("food",-eat,"the hall eats");
  const wage=wageRate(s)*60; if(wage>0) add("silver",-wage,"wages");
+ // a standing board eats meals in the background — show that drain, else the flow lies
+ if(TIER(s,"board")&&autoOn(s,"board")){ const mpm=tableCost(s)*60000/tableMs(s); if(mpm>0) add("meals",-mpm,"the standing board"); }
  for(const k in f) f[k].net=f[k].in-f[k].out;
  return {f,idle};
 }
@@ -1407,7 +1414,6 @@ function bestToolFor(s,skl){
  return best;
 }
 // the best unworn thing in the pile that would better one of the named
-function takeTool(){ const s=S; const a=ACT[s.act]; if(a) reachForTool(s,a.sk,true); maybeDraw(); }
 const autoOn=(s,k)=>((s.auto||{})[k]!==0);
 function reachForTool(s,skl,byHand){
  if(!byHand&&(!TIER(s,"hand")||!autoOn(s,"hand")))return;
@@ -1526,7 +1532,7 @@ function feast(){const s=S,c=feastCost(s);
  toast("A feast is held"); maybeDraw();}
 function setTable(quiet){const s=S;
  const c=tableCost(s);
- if(s.res.meals<c){toast(`Wants ${c} pot${c>1?"s":""} — one for every mouth`);return;}
+ if(s.res.meals<c){toast(`Wants ${c} pot${c>1?"s":""} — more for a full hall`);return;}
  s.res.meals-=c; s.table=tableMs(s); s.tableMax=s.table; s.tableLift=tableLift(s);
  s.ev.tables=(s.ev.tables||0)+1;
  log(`A pot on the board — every hand works ${Math.round(s.tableLift*100)}% harder for ${dur(s.table)}.`,"good");
@@ -1576,7 +1582,7 @@ function openMarket(s,portId){ const p=portDef(portId); if(!p)return;
  const left=marketMins(p)*60000, offers=marketOffers(s,p);
  const ex=s.markets.find(m=>m.port===portId);
  if(ex){ ex.left=left; ex.offers=offers; } else s.markets.push({port:portId,left,offers});
- log(`The market at ${p.en} is open — ${marketMins(p)} minutes to trade.`,"y"); toast("A market is open: "+p.en);
+ log(`The kaupstefna at ${p.en} is open — ${marketMins(p)} minutes to trade.`,"y"); toast("A kaupstefna is open: "+p.en);
 }
 function doTrade(mi,oi){const s=S,mk=s.markets[mi]; if(!mk)return; const o=mk.offers[oi]; if(!o)return;
  const where=portDef(mk.port).en;
@@ -1680,10 +1686,12 @@ function view_work(s){
      const worn=s.eq.tool, wr=worn?REC.find(x=>x.id===worn.rec):null;
      const b=bestToolFor(s,a.sk);
      if(b&&!b.worn){ const br=REC.find(x=>x.id===b.id);
+      // no quick-equip shortcut here — tools come to hand through the ørlǫg line, or you
+      // fit them yourself on the Crew tab; this only names what is waiting in the pile
       return `<div class="sub" style="color:var(--gold);margin-top:5px">${
-        wr&&wr.sk!==a.sk ? `You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, which is no use here.`
-        : wr ? `There is a better one in the pile.` : `You are working bare-handed.`
-      } <button data-taketool="1" style="min-height:38px;padding:6px 12px;margin-left:6px">take up the ${br.en.toLowerCase()}</button></div>`; }
+        wr&&wr.sk!==a.sk ? `You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, no use here — a ${br.en.toLowerCase()} waits in the pile.`
+        : wr ? `A better ${br.en.toLowerCase()} waits in the pile.` : `You are working bare-handed — a ${br.en.toLowerCase()} waits in the pile.`
+      }</div>`; }
      if(wr&&wr.sk&&wr.sk!==a.sk)
       return `<div class="sub" style="color:var(--rust);margin-top:5px">You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()} — no use for ${SK[a.sk].toLowerCase()}, and you own nothing better.</div>`;
      return "";})()}   ${(()=>{const on=onCraft(s,a.sk);if(!on.length)return "";
@@ -1723,7 +1731,7 @@ function view_work(s){
       return `<button class="pick ${s.act===k?"on":""} ${want?"want":""}" data-act="${k}" data-who="me">
        <b>${x.en}</b><small>${Object.entries(x.out).map(([r,v])=>"+"+v+" "+r).join(", ")} · ${x.secs}s${
         x.rare?" · "+Object.keys(x.rare)[0]:""}</small>${
-        x.use?`<span class="who">uses ${Object.entries(x.use).map(([r,v])=>v+" "+r).join(", ")}</span>`:""}</button>`;}).join("")
+        x.use?`<span class="who">uses ${Object.entries(x.use).map(([r,v])=>`<span${(s.res[r]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${r}</span>`).join(", ")}</span>`:""}</button>`;}).join("")
      +`</div></div>`;}).join("");}).join("")
    +`${s.unlocked.length<19?`<div class="note" style="margin-top:4px">More work opens as you go.</div>`:""}
    ${TIER(s,"hand")?`<button data-auto="hand" style="margin-top:8px;width:100%;${autoOn(s,"hand")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"hand")?"tools come to hand":"you change tools yourself"}</button>`:""}</div>`;
@@ -1754,7 +1762,7 @@ function flowCard(s){
   const x=f[k], net=x.net, full=cap[k]&&s.res[k]>=cap[k]-0.5;
   const till=net>0.01&&cap[k]?(cap[k]-s.res[k])/net:net<-0.01?s.res[k]/-net:null;
   const note = k==="silver"
-   ? `<span style="color:var(--dim)">wages, paid as the work is done — silver comes in when you take work or land a voyage</span>`
+   ? `<span style="color:var(--dim)">wages, paid as the work is done — silver comes in when you take work or land a voyage${net<-0.01&&s.res.silver>0?` · <span style="color:var(--rust)">purse empty in ${dur(s.res.silver/-net*60000)}</span>`:""}</span>`
    : full?`<span style="color:var(--gold)">full — what comes in is lost</span>`
    : till!==null&&till<600?`<span style="color:${net>0?"var(--dim)":"var(--rust)"}">${net>0?"full":"empty"} in ${dur(till*60000)}</span>`:"&nbsp;";
   return `<div class="row" data-flow="${k}" style="cursor:pointer;${sel===k?"border-left:2px solid var(--gold);padding-left:8px;margin-left:-10px":""}">
@@ -1771,7 +1779,10 @@ function flowCard(s){
 }
 function view_crew(s){
  let h="";
-  h+=`<div class="card"><h2>You</h2>${eqHtml(s.eq,"me")}</div>`;
+  const meR=runner(s,null);
+  h+=`<div class="card"><h2>You</h2>${meR
+    ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.entries(meR.a.use).map(([k,v])=>`<span${(s.res[k]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${k}</span>`).join(", ")}`:""}</div>`
+    :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}${eqHtml(s.eq,"me")}</div>`;
   s.crew.forEach((c,i)=>{const r=runner(s,c);
    const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]);
    const capped=cL(c,r.a.sk)>=(c.capL||99);
@@ -1912,7 +1923,7 @@ function view_sea(s){
      `<div class="row"><span>Sell <b>${CN[k]}</b> <span class="mono sub">×${s.res[k]}</span>
         <div class="sub">${rarePrice(s,p,k)} silver each${seaDef(p.sea).reach>=1?" · a rich market pays well":""}</div></span>
        <button class="take" data-sellrare="${mi}|${k}">sell one</button></div>`).join("");
-   h+=sect(s,"mk_"+mk.port,`Market — ${p.en}`,`open <span id="mkt${mi}">${dur(mk.left)}</span>`,
+   h+=sect(s,"mk_"+mk.port,`Kaupstefna — ${p.en}`,`open <span id="mkt${mi}">${dur(mk.left)}</span>`,
     (mk.offers.length?mk.offers.map((o,oi)=>{
       const can=o.kind==="sell"?(s.res[o.res]||0)>=o.qty:s.res.silver>=o.silver;
       return `<div class="row"><span>${o.kind==="sell"?`Sell <b>${o.qty} ${o.res}</b>`:`Buy <b>${o.qty} ${o.res}</b>`}
@@ -1945,8 +1956,10 @@ function view_sea(s){
       <div class="sub" style="margin-top:5px">${sh.cond>=99?"Sound and tarred, on the sand.":`Mending wants ${want} hull — you have ${f(s.res.hull)}.`}</div>`+
       (sh.cond<99?`<button data-mend="${i}" style="margin-top:6px;width:100%" ${s.res.hull>=want?"":"disabled"}>mend her</button>`:"");
     }
+    const perks=[d.cargo>1?`${Math.round((d.cargo-1)*100)}% more in the hold`:"",d.speed>1?`${Math.round((d.speed-1)*100)}% quicker`:"",d.wear<1?`wears ${Math.round((1-d.wear)*100)}% slower`:""].filter(Boolean).join(" · ");
     return `<div style="margin:9px 0 2px;border-top:1px solid var(--edge);padding-top:8px">
       <div class="hd"><span class="nm">${d.en}</span><span class="lv">${Math.round(sh.cond)}/100${!t&&sh.cond<25?' <span style="color:var(--rust)">failing</span>':""}</span></div>
+      ${perks?`<div class="sub" style="color:var(--patina)">${perks}</div>`:`<div class="sub">the smallest hull — home waters only</div>`}
       ${body}</div>`;
    }).join("")+`</div>`;
  }
@@ -1985,13 +1998,25 @@ function view_sea(s){
       }
       const fit=fitOf(s,p), shr=shareOf(s,p);
       const senders=canReach?idle.filter(x=>shipCanSail(x.sh,p.id)):[];
+      const lowStores=s.res.stores<p.stores, lowSilver=s.res.silver<fit;
       const btns=senders.length?senders.map(x=>{
-        const ok=s.res.stores>=p.stores&&x.sh.cond>=p.wear+10&&s.res.silver>=fit;
-        return `<button data-sail="${p.id}|${x.i}" ${ok?"":"disabled"}>${s.fleet.length>1?shipDef(x.sh.tier).en.toLowerCase():"sail"}</button>`;
+        const worn=x.sh.cond<p.wear+10, ok=!lowStores&&!lowSilver&&!worn;
+        // the ship's own voyage time (÷ her speed), so a faster hull reads as faster here
+        const label=(s.fleet.length>1?shipDef(x.sh.tier).en.toLowerCase():"sail")+" · "+dur(voyMs(s,x.sh,p));
+        return `<button data-sail="${p.id}|${x.i}" ${ok?"":"disabled"}>${label}</button>`;
       }).join(""):`<span class="sub" style="color:var(--dim)">${canReach?"no ship free":"—"}</span>`;
+      // if she can't be sent, say why — the shared shortages first, then a worn hull
+      const why=[];
+      if(canReach&&senders.length){
+        if(lowStores)why.push(`wants ${p.stores} stores, ${f(s.res.stores)} in hand`);
+        if(lowSilver)why.push(`wants ${nfm(fit)} silver to fit, ${nfm(s.res.silver)} in the purse`);
+        if(!lowStores&&!lowSilver&&senders.every(x=>x.sh.cond<p.wear+10))why.push("every free ship is too worn — mend one first");
+      }
+      const cr=short=>short?"var(--rust)":"var(--dim)";
       return `<div class="row"><span>${p.en}
-        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · ${p.stores} stores · ${nfm(fit)} to fit · they take ${Math.round(shr*100)}%</div>
-        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div></span>
+        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · <span style="color:${cr(lowStores)}">${p.stores} stores</span> · <span style="color:${cr(lowSilver)}">${nfm(fit)} to fit</span> · they take ${Math.round(shr*100)}%</div>
+        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div>
+        ${why.length?`<div class="sub" style="color:var(--rust)">${why.join(" · ")}</div>`:""}</span>
         <span class="give" style="max-width:52%">${btns}</span></div>`;
      }).join("");
    h+=sect(s,"sea_"+sea.id, sea.en+tag, `${openCount}/${ports.length}`, body, unlocked&&canReach&&!complete);
@@ -2137,9 +2162,11 @@ function view_hall(s){
   const nx=HALL[s.hall+1];
   h+=`<div class="card"><h2>Hall — level ${s.hall}</h2>
    <div class="row"><span>Room at your side</span><span class="mono">${s.crew.length} / ${HALL[s.hall].crew}</span></div>
-   <div class="row"><span>Stores hold</span><span class="mono">×${HALL[s.hall].capx}</span></div>`;
+   <div class="row"><span>Stores hold</span><span class="mono">×${HALL[s.hall].capx}</span></div>
+   <div class="row"><span>Skill cap</span><span class="mono">${softCap(s)}${softCap(s)>=MAX_LEVEL?" (the most there is)":LT(s,"elder")?` · hall ${s.hall*8} + counsel ${5*LT(s,"elder")}`:""}</span></div>`;
   if(nx){const nsk=Object.keys(SK).filter(k=>myL(s,k)>=nx.need.sk[1]).length;
-   h+=`<div class="sub" style="margin-top:9px;color:var(--patina)">Raising it gives room for ${nx.crew} at your side (now ${HALL[s.hall].crew}) and stores ×${nx.capx}.</div>`;
+   const capNext=Math.min(MAX_LEVEL,(s.hall+1)*8+5*LT(s,"elder"));
+   h+=`<div class="sub" style="margin-top:9px;color:var(--patina)">Raising it gives room for ${nx.crew} at your side (now ${HALL[s.hall].crew}), stores ×${nx.capx}${capNext>softCap(s)?`, and lifts the skill cap to ${capNext} (now ${softCap(s)})`:""}.</div>`;
    const rs=[{t:`${nx.need.sk[0]} skills at level ${nx.need.sk[1]}`,ok:nsk>=nx.need.sk[0],now:`${nsk}/${nx.need.sk[0]}`},
     ...Object.entries(nx.cost).map(([k,v])=>({t:`${v} ${k}`,ok:s.res[k]>=v,now:f(s.res[k])}))];
    h+=`<div style="margin-top:9px" class="note">To raise it:</div>`+
@@ -2418,7 +2445,6 @@ function fire(t){
  else if(d.land!==undefined){const fi=+d.land;const ti=S.trips.findIndex(t=>t.ship===fi&&t.home);if(ti>=0)land(ti);}
  else if(d.mend!==undefined)mend(+d.mend);
  else if(d.table)setTable();
- else if(d.taketool)takeTool();
  else if(d.auto){ if(!S.auto)S.auto={}; S.auto[d.auto]=autoOn(S,d.auto)?0:1; lastSig=""; maybeDraw(); }
  else if(d.feast)feast();
  else if(d.hall)upHall();

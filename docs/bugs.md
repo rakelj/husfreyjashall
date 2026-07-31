@@ -8,8 +8,14 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ---
 
-## 1. 🔴 Ships feel identical on the same route
+## 1. 🟡 Ships feel identical on the same route
 Sailing the coastal run with a færing vs a knarr shows no difference.
+
+**Surfacing done (v0.17.8):** each sail button now shows *that ship's* actual voyage
+time (`voyMs`, ÷ her speed), so a knarr visibly beats a færing at the point of
+decision; the fleet card lists each ship's perks (more hold · quicker · wears
+slower). **Still open (balance/decision):** making `fit` scale with ship tier,
+widening the speed/cargo gaps, and letting `cargo` raise the rare-find chance.
 
 **Reality under the hood:** ships *do* differ — `voyMs` divides the voyage time by
 `ship.speed` (knarr ×1.15, longship ×1.35) and `rollHaul` multiplies silver by
@@ -56,13 +62,17 @@ to raise the odds of a mid-tier one you *do* want appearing.
 - All **three** offers that come should be of that profession.
 - The **cost and cooldown increase every time** you use it.
 
-## 6. 🔴 Missing inputs for a work aren't clearly color-coded
+## 6. ✅ Missing inputs for a work aren't clearly color-coded
 On the Work tab, a work you can't currently run for lack of inputs should be
 color-coded so it's obvious at a glance. There's a partial `.pick.want` rust style
 already, but it's not clear enough / doesn't call out *which* input is short —
 ideally the "uses ore, charcoal" line reds the specific missing resource(s).
 
-## 7. 🔴 Tool unlock order should follow the tier chain
+**Fixed (v0.17.9):** the "uses …" line on each work now reds the specific input(s)
+you're short on (alongside the existing `.pick.want` whole-button cue). The player's
+work line on the Crew tab reds its short inputs the same way.
+
+## 7. ✅ Tool unlock order should follow the tier chain
 Tools for raw-material crafts (forage, fish, wood, mine, herd) should become
 available before tools for processed crafts (smith, weave, keep), before products
 (cook, sail, ship). Right now tool recipes unlock purely by their own `learn.sk`
@@ -70,8 +80,19 @@ level (`REC` tier-1 tools), independent of tier, so a product-craft tool can be
 worked out before a raw-craft one. Gate/order them so raw → processed → product,
 matching the chain (and the dependency order the road already teaches in).
 
-## 8. 🔴 Market overhaul (naming, refresh behaviour, per-market rules)
+**Fixed (v0.17.11):** added a `craftTier(sk)` helper (0 raw · 1 processed · 2 product)
+and a gate in `learnCheck` — a **tool** recipe of tier > 0 won't unlock until you
+already know a tool of the tier below it. So a processed-craft tool waits on a
+raw-craft tool, a product-craft tool on a processed one; the chain holds by
+induction. Only affects future unlocks (never removes a known recipe), so old saves
+are unharmed. Non-tool gear (garment/rune/amulet) is unaffected.
+
+## 8. 🟡 Market overhaul (naming, refresh behaviour, per-market rules)
 Bigger pass on the kaupstefna markets.
+
+**Naming slice done (v0.17.8):** the market is now labelled "Kaupstefna — <port>" (and
+the open/close log lines match), using the kaupstefna term over the port's own name.
+The refresh-behaviour rules and per-market offer rules below are still open.
 
 **Naming.** They're generically labelled "Market — <port>". Should use the
 kaupstefna terminology and each market should have a proper name (design.md §9 has
@@ -97,10 +118,15 @@ that port; different ports open separate markets. Needs a deliberate rule.
 (Ties into #1's "bigger boat holds more" and the existing `marketWealth` scaling —
 keep them coherent.)
 
-## 9. 🔴 Flow panel: show time-to-empty for negative flows
+## 9. ✅ Flow panel: show time-to-empty for negative flows
 Under "What is moving", tapping a resource whose net flow is **negative** should
 also show how long until it runs out (time-to-empty), the mirror of the "full in
 Xm" shown for positive flows.
+
+**Fixed (v0.17.9):** ordinary resources already showed "empty in Xm" when draining;
+the gap was **silver**, whose note was hard-coded to the wages explanation. It now
+appends "· purse empty in Xm" (red) whenever silver is running down — the one flow
+that actually goes negative in normal play.
 
 ## 10. ✅ Times shown as decimal minutes instead of m/s
 Some times render like "2.8 minutes" (seen in Lore, possibly elsewhere) — should be
@@ -117,13 +143,25 @@ Byproducts, rare mats at sea, market offers, and sea charts should all be driven
 a single **luck** stat. Luck comes from amulets; the first (Amber bead) is **18%**,
 probably too high. Design a coherent luck system and rebalance the amulet line.
 
-## 12. 🔴 Crew tab should show what each hand is working on
+## 12. ✅ Crew tab should show what each hand is working on
 The Crew tab doesn't say what each person (and you) is currently working on. Add it.
 
-## 13. 🔴 Remove quick-equip popups; highlight in-slot instead
+**Fixed (v0.17.9):** the crew cards already named each hand's work and output; the gap
+was the **You** card, which showed only equipment. It now shows your current work,
+its output/rate, and its inputs (reddened when short) — or a prompt to pick one.
+
+## 13. 🟡 Remove quick-equip popups; highlight in-slot instead
 The shortcut equip popups (crew equipment, and the player's on the Work panel)
 **undermine the "tools to hand" ørlǫg line** — remove them. Instead, tapping a slot
 should highlight/show the equipment **inside the slot**, not open a picker popup.
+
+**Partly done (v0.17.11), per Rakel's call:** dropped the Work-panel quick-equip
+shortcut — the "take up the <tool>" button (and its `takeTool` handler) is gone, so
+the player's tool now comes to hand only through the ørlǫg line (`hand` auto) or by
+fitting it on the Crew tab. The Work-panel notice still *names* the better tool
+waiting in the pile. **Left as-is:** the Crew-tab slot picker — kept because crew are
+equipped only through it (no crew auto-equip exists); removing it would need an
+auto-assign system first (a bigger design change we deferred).
 
 ## 14. ✅ Market "sell one" (rare) doesn't consume / can keep selling
 Selling a rare at a market: the row doesn't disappear and you can keep selling past
@@ -141,14 +179,22 @@ No code change needed beyond the earlier stateSig fix.
 The season's-work band should not reward recipes or materials that come from the sea.
 Reward should be a choice between **silver / a raw material / a rare raw material**.
 
-## 16. 🔴 Surface the skill level cap (for Elder counsel)
+## 16. ✅ Surface the skill level cap (for Elder counsel)
 Elder counsel is opaque without knowing the current level cap. Show the `softCap` in
 the Hall description (e.g. "raising the hall lifts the skill cap to 50 (now 40)") so
 the lore's value is legible.
 
-## 17. 🔴 A ship that can't be sent out must say why
+**Fixed (v0.17.10):** the Hall card now has a **Skill cap** row (with the hall + counsel
+breakdown once Elder counsel is read), and the "raise the hall" line spells out the
+lift — "lifts the skill cap to 56 (now 48)". (The Skills card already showed the cap.)
+
+## 17. ✅ A ship that can't be sent out must say why
 When a ship can't sail (not enough stores, too worn, etc.), say why — colour-code the
 missing input (e.g. stores) like the Work tab should for missing craft inputs (#6).
+
+**Fixed (v0.17.8):** the port row now reds the short requirement (stores / silver to
+fit) and prints a reason line — "wants N stores, M in hand", "wants N silver to fit,
+M in the purse", or "every free ship is too worn — mend one first".
 
 ## 18. ✅ Sea-tab indicator when a market is open
 Add a marker to the Sea tab when a market is up (an "M" in the corner is fine for now).
@@ -157,18 +203,26 @@ Add a marker to the Sea tab when a market is up (an "M" in the corner is fine fo
 `s.markets.length` is non-zero, and clears it when the last market closes. Updates on
 the same signature change (`s.markets`) that already triggers redraws.
 
-## 19. 🔴 Flow panel should include meals/pots when auto-table is on
+## 19. ✅ Flow panel should include meals/pots when auto-table is on
 "What is moving" is confusing when the standing board (auto set table) is on because
 the meals/pots being consumed aren't shown. Add meals to the flow.
+
+**Fixed (v0.17.10):** `flows()` now adds a meals outflow — `tableCost / tableMinutes`,
+credited to "the standing board" — whenever the board is set to fill itself, so the
+meal drain shows in "What is moving" like food and wages.
 
 ## 20. 🔴 Crew wages feel very high (esp. idle/sleeping)
 You lose a lot of silver while hands sleep/idle. Balance pass on `WAGE_CYCLE` / when
 wages are charged. (Note: we decided food-foraging ignores wages, but this is the
 broader wage economy.)
 
-## 21. 🔴 Way on: "Sail the east way" step should cover all waters
+## 21. ✅ Way on: "Sail the east way" step should cover all waters
 Step ~34 "Sail the east way" no longer fits now that waters unlock in sequence —
 rework it to be about sailing/charting all the waters.
+
+**Fixed (v0.17.10):** the step is now **"Sail every water"** — progress is the number of
+distinct seas you've put a keel into (home / west / north / east), completing at all
+four. Reward unchanged (silk); say-line reworked to name the sequence.
 
 ## 22. ✅ Crew don't stop when out of silver
 Crew are supposed to stop working when the purse is empty (`doCycle` has an unpaid
