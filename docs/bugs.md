@@ -72,13 +72,20 @@ ideally the "uses ore, charcoal" line reds the specific missing resource(s).
 you're short on (alongside the existing `.pick.want` whole-button cue). The player's
 work line on the Crew tab reds its short inputs the same way.
 
-## 7. 🔴 Tool unlock order should follow the tier chain
+## 7. ✅ Tool unlock order should follow the tier chain
 Tools for raw-material crafts (forage, fish, wood, mine, herd) should become
 available before tools for processed crafts (smith, weave, keep), before products
 (cook, sail, ship). Right now tool recipes unlock purely by their own `learn.sk`
 level (`REC` tier-1 tools), independent of tier, so a product-craft tool can be
 worked out before a raw-craft one. Gate/order them so raw → processed → product,
 matching the chain (and the dependency order the road already teaches in).
+
+**Fixed (v0.17.11):** added a `craftTier(sk)` helper (0 raw · 1 processed · 2 product)
+and a gate in `learnCheck` — a **tool** recipe of tier > 0 won't unlock until you
+already know a tool of the tier below it. So a processed-craft tool waits on a
+raw-craft tool, a product-craft tool on a processed one; the chain holds by
+induction. Only affects future unlocks (never removes a known recipe), so old saves
+are unharmed. Non-tool gear (garment/rune/amulet) is unaffected.
 
 ## 8. 🟡 Market overhaul (naming, refresh behaviour, per-market rules)
 Bigger pass on the kaupstefna markets.
@@ -143,10 +150,18 @@ The Crew tab doesn't say what each person (and you) is currently working on. Add
 was the **You** card, which showed only equipment. It now shows your current work,
 its output/rate, and its inputs (reddened when short) — or a prompt to pick one.
 
-## 13. 🔴 Remove quick-equip popups; highlight in-slot instead
+## 13. 🟡 Remove quick-equip popups; highlight in-slot instead
 The shortcut equip popups (crew equipment, and the player's on the Work panel)
 **undermine the "tools to hand" ørlǫg line** — remove them. Instead, tapping a slot
 should highlight/show the equipment **inside the slot**, not open a picker popup.
+
+**Partly done (v0.17.11), per Rakel's call:** dropped the Work-panel quick-equip
+shortcut — the "take up the <tool>" button (and its `takeTool` handler) is gone, so
+the player's tool now comes to hand only through the ørlǫg line (`hand` auto) or by
+fitting it on the Crew tab. The Work-panel notice still *names* the better tool
+waiting in the pile. **Left as-is:** the Crew-tab slot picker — kept because crew are
+equipped only through it (no crew auto-equip exists); removing it would need an
+auto-assign system first (a bigger design change we deferred).
 
 ## 14. ✅ Market "sell one" (rare) doesn't consume / can keep selling
 Selling a rare at a market: the row doesn't disappear and you can keep selling past

@@ -179,6 +179,7 @@ const SK={forage:"Foraging",fish:"Fishing",wood:"Woodcraft",mine:"Mining",herd:"
  cook:"Cooking",sail:"Sailmaking",ship:"Shipwright"};
 const TIERS=[["Raw","forage fish wood mine herd"],["Processed","smith weave keep"],["Product","cook sail ship"]]
  .map(([t,k])=>({t,ks:k.split(" ")}));
+const craftTier=sk=>TIERS.findIndex(T=>T.ks.includes(sk));   // 0 raw · 1 processed · 2 product
 /* raw · processed · product, in the order the chain runs */
 const RES=["food","herbs","kelp","fish","timber","bark","ore","clay","wool","horn",
  "salt","charcoal","iron","yarn","cloth","stores","meals","sailcloth","hull","silver"];
@@ -567,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.10";
-const BUILT="31 Jul 2026 · 15:40 UTC";
+const BUILD="v0.17.11";
+const BUILT="31 Jul 2026 · 18:33 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="The Hall now shows the skill cap and how raising it lifts it, the standing board's meal use shows in the flow, and the road's east-way step asks you to sail every water.";
+const NOTES="Tools now come out along the chain — a raw-craft tool before a processed one before a product — and the Work panel's quick-equip shortcut is gone, so tools come to hand by the ørlǫg.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -902,6 +903,10 @@ function learnCheck(s){
   // how a plain wrap is cut before you have woven any cloth. Rare sea things
   // (amber, glass) are not gated, so those recipes still show as a goal to sail for.
   if(!Object.keys(r.cost||{}).every(k=>(s.tot[k]||0)>0))return;
+  // tools follow the chain: a processed-craft tool waits on knowing a raw-craft tool,
+  // a product-craft tool on a processed one — raw → processed → product
+  if(r.slot==="tool"){ const ti=craftTier(r.sk);
+   if(ti>0 && !REC.some(x=>x.slot==="tool"&&s.known.includes(x.id)&&craftTier(x.sk)===ti-1)) return; }
   if(myL(s,r.learn.sk)>=r.learn.lv){ s.known.push(r.id);
    log(`You work out how a ${r.en.toLowerCase()} is made.`,"y"); toast("Learned: "+r.en); } });
 }
@@ -1409,7 +1414,6 @@ function bestToolFor(s,skl){
  return best;
 }
 // the best unworn thing in the pile that would better one of the named
-function takeTool(){ const s=S; const a=ACT[s.act]; if(a) reachForTool(s,a.sk,true); maybeDraw(); }
 const autoOn=(s,k)=>((s.auto||{})[k]!==0);
 function reachForTool(s,skl,byHand){
  if(!byHand&&(!TIER(s,"hand")||!autoOn(s,"hand")))return;
@@ -1682,10 +1686,12 @@ function view_work(s){
      const worn=s.eq.tool, wr=worn?REC.find(x=>x.id===worn.rec):null;
      const b=bestToolFor(s,a.sk);
      if(b&&!b.worn){ const br=REC.find(x=>x.id===b.id);
+      // no quick-equip shortcut here — tools come to hand through the ørlǫg line, or you
+      // fit them yourself on the Crew tab; this only names what is waiting in the pile
       return `<div class="sub" style="color:var(--gold);margin-top:5px">${
-        wr&&wr.sk!==a.sk ? `You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, which is no use here.`
-        : wr ? `There is a better one in the pile.` : `You are working bare-handed.`
-      } <button data-taketool="1" style="min-height:38px;padding:6px 12px;margin-left:6px">take up the ${br.en.toLowerCase()}</button></div>`; }
+        wr&&wr.sk!==a.sk ? `You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, no use here — a ${br.en.toLowerCase()} waits in the pile.`
+        : wr ? `A better ${br.en.toLowerCase()} waits in the pile.` : `You are working bare-handed — a ${br.en.toLowerCase()} waits in the pile.`
+      }</div>`; }
      if(wr&&wr.sk&&wr.sk!==a.sk)
       return `<div class="sub" style="color:var(--rust);margin-top:5px">You are holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()} — no use for ${SK[a.sk].toLowerCase()}, and you own nothing better.</div>`;
      return "";})()}   ${(()=>{const on=onCraft(s,a.sk);if(!on.length)return "";
@@ -2439,7 +2445,6 @@ function fire(t){
  else if(d.land!==undefined){const fi=+d.land;const ti=S.trips.findIndex(t=>t.ship===fi&&t.home);if(ti>=0)land(ti);}
  else if(d.mend!==undefined)mend(+d.mend);
  else if(d.table)setTable();
- else if(d.taketool)takeTool();
  else if(d.auto){ if(!S.auto)S.auto={}; S.auto[d.auto]=autoOn(S,d.auto)?0:1; lastSig=""; maybeDraw(); }
  else if(d.feast)feast();
  else if(d.hall)upHall();
