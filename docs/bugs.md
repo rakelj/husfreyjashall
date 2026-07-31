@@ -164,10 +164,14 @@ No code change needed beyond the earlier stateSig fix.
 The season's-work band should not reward recipes or materials that come from the sea.
 Reward should be a choice between **silver / a raw material / a rare raw material**.
 
-## 16. 🔴 Surface the skill level cap (for Elder counsel)
+## 16. ✅ Surface the skill level cap (for Elder counsel)
 Elder counsel is opaque without knowing the current level cap. Show the `softCap` in
 the Hall description (e.g. "raising the hall lifts the skill cap to 50 (now 40)") so
 the lore's value is legible.
+
+**Fixed (v0.17.10):** the Hall card now has a **Skill cap** row (with the hall + counsel
+breakdown once Elder counsel is read), and the "raise the hall" line spells out the
+lift — "lifts the skill cap to 56 (now 48)". (The Skills card already showed the cap.)
 
 ## 17. ✅ A ship that can't be sent out must say why
 When a ship can't sail (not enough stores, too worn, etc.), say why — colour-code the
@@ -184,18 +188,26 @@ Add a marker to the Sea tab when a market is up (an "M" in the corner is fine fo
 `s.markets.length` is non-zero, and clears it when the last market closes. Updates on
 the same signature change (`s.markets`) that already triggers redraws.
 
-## 19. 🔴 Flow panel should include meals/pots when auto-table is on
+## 19. ✅ Flow panel should include meals/pots when auto-table is on
 "What is moving" is confusing when the standing board (auto set table) is on because
 the meals/pots being consumed aren't shown. Add meals to the flow.
+
+**Fixed (v0.17.10):** `flows()` now adds a meals outflow — `tableCost / tableMinutes`,
+credited to "the standing board" — whenever the board is set to fill itself, so the
+meal drain shows in "What is moving" like food and wages.
 
 ## 20. 🔴 Crew wages feel very high (esp. idle/sleeping)
 You lose a lot of silver while hands sleep/idle. Balance pass on `WAGE_CYCLE` / when
 wages are charged. (Note: we decided food-foraging ignores wages, but this is the
 broader wage economy.)
 
-## 21. 🔴 Way on: "Sail the east way" step should cover all waters
+## 21. ✅ Way on: "Sail the east way" step should cover all waters
 Step ~34 "Sail the east way" no longer fits now that waters unlock in sequence —
 rework it to be about sailing/charting all the waters.
+
+**Fixed (v0.17.10):** the step is now **"Sail every water"** — progress is the number of
+distinct seas you've put a keel into (home / west / north / east), completing at all
+four. Reward unchanged (silk); say-line reworked to name the sequence.
 
 ## 22. ✅ Crew don't stop when out of silver
 Crew are supposed to stop working when the purse is empty (`doCycle` has an unpaid

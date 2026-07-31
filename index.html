@@ -428,8 +428,8 @@ const INTRO=[
   say:"The finer gear is only ever shown to you at sea. Sail for it."},
  {t:"Raise the hall to five",      val:s=>s.hall, n:5, r:{silver:2600},
   say:"Five at the board, and the stores to feed them."},
- {t:"Sail the east way",           val:s=>(s.sailed||[]).some(pid=>{const p=portDef(pid);return p&&p.sea==="east";})?1:0, n:1, r:{comp:"silk"},
-  say:"The long water. Silk comes from there, and little else does."},
+ {t:"Sail every water",            val:s=>new Set((s.sailed||[]).map(pid=>(portDef(pid)||{}).sea).filter(Boolean)).size, n:SEAS.length, r:{comp:"silk"},
+  say:"The waters open in turn — home, then the western and northern seas, then the long eastern way. Put a keel into each."},
  {t:"Raise the hall to six",       val:s=>s.hall, n:6, r:{silver:5000},
   say:"What was once the greatest hall you could raise. It is not, any longer."},
  {t:"Reach 40 in any craft",       val:s=>Math.max(...Object.keys(SK).map(k=>myL(s,k))), n:40, r:{comp:"glass"},
@@ -567,10 +567,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.9";
-const BUILT="31 Jul 2026 · 15:31 UTC";
+const BUILD="v0.17.10";
+const BUILT="31 Jul 2026 · 15:40 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Legibility: a work you can't run reds the input you're short on, the flow panel shows when the purse runs empty, and the Crew tab now names your own work, not just the crew's.";
+const NOTES="The Hall now shows the skill cap and how raising it lifts it, the standing board's meal use shows in the flow, and the road's east-way step asks you to sail every water.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -955,6 +955,8 @@ function flows(s){
  one(null,-1); s.crew.forEach((c,i)=>one(c,i));
  const eat=eatRate(s)*60; if(eat>0) add("food",-eat,"the hall eats");
  const wage=wageRate(s)*60; if(wage>0) add("silver",-wage,"wages");
+ // a standing board eats meals in the background — show that drain, else the flow lies
+ if(TIER(s,"board")&&autoOn(s,"board")){ const mpm=tableCost(s)*60000/tableMs(s); if(mpm>0) add("meals",-mpm,"the standing board"); }
  for(const k in f) f[k].net=f[k].in-f[k].out;
  return {f,idle};
 }
@@ -1526,7 +1528,7 @@ function feast(){const s=S,c=feastCost(s);
  toast("A feast is held"); maybeDraw();}
 function setTable(quiet){const s=S;
  const c=tableCost(s);
- if(s.res.meals<c){toast(`Wants ${c} pot${c>1?"s":""} — one for every mouth`);return;}
+ if(s.res.meals<c){toast(`Wants ${c} pot${c>1?"s":""} — more for a full hall`);return;}
  s.res.meals-=c; s.table=tableMs(s); s.tableMax=s.table; s.tableLift=tableLift(s);
  s.ev.tables=(s.ev.tables||0)+1;
  log(`A pot on the board — every hand works ${Math.round(s.tableLift*100)}% harder for ${dur(s.table)}.`,"good");
@@ -2154,9 +2156,11 @@ function view_hall(s){
   const nx=HALL[s.hall+1];
   h+=`<div class="card"><h2>Hall — level ${s.hall}</h2>
    <div class="row"><span>Room at your side</span><span class="mono">${s.crew.length} / ${HALL[s.hall].crew}</span></div>
-   <div class="row"><span>Stores hold</span><span class="mono">×${HALL[s.hall].capx}</span></div>`;
+   <div class="row"><span>Stores hold</span><span class="mono">×${HALL[s.hall].capx}</span></div>
+   <div class="row"><span>Skill cap</span><span class="mono">${softCap(s)}${softCap(s)>=MAX_LEVEL?" (the most there is)":LT(s,"elder")?` · hall ${s.hall*8} + counsel ${5*LT(s,"elder")}`:""}</span></div>`;
   if(nx){const nsk=Object.keys(SK).filter(k=>myL(s,k)>=nx.need.sk[1]).length;
-   h+=`<div class="sub" style="margin-top:9px;color:var(--patina)">Raising it gives room for ${nx.crew} at your side (now ${HALL[s.hall].crew}) and stores ×${nx.capx}.</div>`;
+   const capNext=Math.min(MAX_LEVEL,(s.hall+1)*8+5*LT(s,"elder"));
+   h+=`<div class="sub" style="margin-top:9px;color:var(--patina)">Raising it gives room for ${nx.crew} at your side (now ${HALL[s.hall].crew}), stores ×${nx.capx}${capNext>softCap(s)?`, and lifts the skill cap to ${capNext} (now ${softCap(s)})`:""}.</div>`;
    const rs=[{t:`${nx.need.sk[0]} skills at level ${nx.need.sk[1]}`,ok:nsk>=nx.need.sk[0],now:`${nsk}/${nx.need.sk[0]}`},
     ...Object.entries(nx.cost).map(([k,v])=>({t:`${v} ${k}`,ok:s.res[k]>=v,now:f(s.res[k])}))];
    h+=`<div style="margin-top:9px" class="note">To raise it:</div>`+
