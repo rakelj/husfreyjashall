@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.11";
-const BUILT="31 Jul 2026 · 18:33 UTC";
+const BUILD="v0.17.12";
+const BUILT="31 Jul 2026 · 19:58 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Tools now come out along the chain — a raw-craft tool before a processed one before a product — and the Work panel's quick-equip shortcut is gone, so tools come to hand by the ørlǫg.";
+const NOTES="Fitting a crew hand now marks the best tool for them, so the right pick is plain at a glance.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2399,14 +2399,18 @@ function slotPicker(s,who){
    .filter(r=>r&&r.slot===p.slot&&(!r.sk||who==="me"||r.sk===sk))
    .sort((a,b)=>recVal(b)-recVal(a));
  const wornId=eq[p.slot];
+ // mark the best one for a crew hand — their list all serves one craft, so the top by
+ // worth is the right pick (for you the list mixes crafts, so no single "best")
+ const wornVal=wornId?recVal(REC.find(x=>x.id===wornId)):-1;
+ const bestId=who!=="me"&&fits.length&&recVal(fits[0])>wornVal?fits[0].id:null;
  return `<div class="card" style="margin-top:7px;border-color:var(--gold)">
   <div class="hd"><span class="nm">${SLOTS[p.slot]} for ${who==="me"?"you":s.crew[who].name}</span>
    <span class="lv"><button data-pick="" style="min-height:34px;padding:5px 11px">done</button></span></div>
   ${wornId?`<div class="row"><span>${REC.find(x=>x.id===wornId).en} <span class="tag" style="border-color:var(--patina);color:var(--patina)">worn</span></span>
     <button class="swap" data-unslot="${p.slot}" data-w="${who}">take it off</button></div>`:""}
-  ${fits.length?fits.map(r=>`<div class="row"><span>${r.en} <span class="mono sub">×${own(s,r.id)}</span>
+  ${fits.length?fits.map(r=>`<div class="row"><span>${r.en} <span class="mono sub">×${own(s,r.id)}</span>${r.id===bestId?` <span class="tag" style="border-color:var(--gold);color:var(--gold)">best</span>`:""}
     <div class="sub">${r.sk?SK[r.sk]+" · ":""}${Object.entries(r.bonus).map(([k,v])=>`+${Math.round(v*100)}% ${k}`).join(", ")}</div></span>
-   <button class="take" data-eq="${r.id}" data-w="${who}">put on</button></div>`).join("")
+   <button class="${!bestId||r.id===bestId?"take":""}" data-eq="${r.id}" data-w="${who}">put on</button></div>`).join("")
    :`<div class="note">Nothing in the hall would fit that${sk?" and serve "+SK[sk].toLowerCase():""}.</div>`}</div>`;
 }
 function fire(t){
