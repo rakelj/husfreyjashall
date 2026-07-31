@@ -150,18 +150,21 @@ The Crew tab doesn't say what each person (and you) is currently working on. Add
 was the **You** card, which showed only equipment. It now shows your current work,
 its output/rate, and its inputs (reddened when short) — or a prompt to pick one.
 
-## 13. 🟡 Remove quick-equip popups; highlight in-slot instead
+## 13. ✅ Remove quick-equip popups; highlight in-slot instead
 The shortcut equip popups (crew equipment, and the player's on the Work panel)
 **undermine the "tools to hand" ørlǫg line** — remove them. Instead, tapping a slot
 should highlight/show the equipment **inside the slot**, not open a picker popup.
 
-**Partly done (v0.17.11), per Rakel's call:** dropped the Work-panel quick-equip
-shortcut — the "take up the <tool>" button (and its `takeTool` handler) is gone, so
-the player's tool now comes to hand only through the ørlǫg line (`hand` auto) or by
-fitting it on the Crew tab. The Work-panel notice still *names* the better tool
-waiting in the pile. **Left as-is:** the Crew-tab slot picker — kept because crew are
-equipped only through it (no crew auto-equip exists); removing it would need an
-auto-assign system first (a bigger design change we deferred).
+**Resolved as (Rakel's calls):**
+- **Work panel (v0.17.11):** dropped the "take up the <tool>" quick-equip shortcut
+  (and its `takeTool` handler). The player's tool now comes to hand only through the
+  ørlǫg line (`hand` auto) or by fitting it on the Crew tab; the notice still *names*
+  the better tool waiting in the pile.
+- **Crew picker (v0.17.12):** kept (crew have no auto-equip), but the best fitting
+  option is now flagged with a gold **best** mark — and its "put on" is the only
+  highlighted button — so the right pick is obvious at a glance. Only shows when it's
+  an upgrade over what's worn; player's own picker is unmarked (it mixes crafts, so
+  no single best).
 
 ## 14. ✅ Market "sell one" (rare) doesn't consume / can keep selling
 Selling a rare at a market: the row doesn't disappear and you can keep selling past
