@@ -567,10 +567,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.7";
-const BUILT="31 Jul 2026 · 10:41 UTC";
+const BUILD="v0.17.8";
+const BUILT="31 Jul 2026 · 15:26 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Two iOS fixes: the “new build” bar now actually brings the update in, and reading a hall back no longer sticks on “opening it” — both stopped leaning on a page reload the home-screen app wouldn't do.";
+const NOTES="At sea: each ship's own voyage time shows on her sail button and her strengths in the fleet, a ship that can't be sent now says why, and the market is named for the kaupstefna.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -877,7 +877,7 @@ function advance(dt){
  // recruit offers refresh
  s.offerT-=dt;if(s.offerT<=0||s.offers.length===0)rollOffers();
  for(let mi=s.markets.length-1;mi>=0;mi--){ s.markets[mi].left-=dt;
-  if(s.markets[mi].left<=0){ log(`The market at ${portDef(s.markets[mi].port).en} has closed.`,"b"); s.markets.splice(mi,1); } }
+  if(s.markets[mi].left<=0){ log(`The kaupstefna at ${portDef(s.markets[mi].port).en} has closed.`,"b"); s.markets.splice(mi,1); } }
  // quests
  ["er","dy","se"].forEach(b=>{
   s.qt[b]+=dt;
@@ -1576,7 +1576,7 @@ function openMarket(s,portId){ const p=portDef(portId); if(!p)return;
  const left=marketMins(p)*60000, offers=marketOffers(s,p);
  const ex=s.markets.find(m=>m.port===portId);
  if(ex){ ex.left=left; ex.offers=offers; } else s.markets.push({port:portId,left,offers});
- log(`The market at ${p.en} is open — ${marketMins(p)} minutes to trade.`,"y"); toast("A market is open: "+p.en);
+ log(`The kaupstefna at ${p.en} is open — ${marketMins(p)} minutes to trade.`,"y"); toast("A kaupstefna is open: "+p.en);
 }
 function doTrade(mi,oi){const s=S,mk=s.markets[mi]; if(!mk)return; const o=mk.offers[oi]; if(!o)return;
  const where=portDef(mk.port).en;
@@ -1912,7 +1912,7 @@ function view_sea(s){
      `<div class="row"><span>Sell <b>${CN[k]}</b> <span class="mono sub">×${s.res[k]}</span>
         <div class="sub">${rarePrice(s,p,k)} silver each${seaDef(p.sea).reach>=1?" · a rich market pays well":""}</div></span>
        <button class="take" data-sellrare="${mi}|${k}">sell one</button></div>`).join("");
-   h+=sect(s,"mk_"+mk.port,`Market — ${p.en}`,`open <span id="mkt${mi}">${dur(mk.left)}</span>`,
+   h+=sect(s,"mk_"+mk.port,`Kaupstefna — ${p.en}`,`open <span id="mkt${mi}">${dur(mk.left)}</span>`,
     (mk.offers.length?mk.offers.map((o,oi)=>{
       const can=o.kind==="sell"?(s.res[o.res]||0)>=o.qty:s.res.silver>=o.silver;
       return `<div class="row"><span>${o.kind==="sell"?`Sell <b>${o.qty} ${o.res}</b>`:`Buy <b>${o.qty} ${o.res}</b>`}
@@ -1945,8 +1945,10 @@ function view_sea(s){
       <div class="sub" style="margin-top:5px">${sh.cond>=99?"Sound and tarred, on the sand.":`Mending wants ${want} hull — you have ${f(s.res.hull)}.`}</div>`+
       (sh.cond<99?`<button data-mend="${i}" style="margin-top:6px;width:100%" ${s.res.hull>=want?"":"disabled"}>mend her</button>`:"");
     }
+    const perks=[d.cargo>1?`${Math.round((d.cargo-1)*100)}% more in the hold`:"",d.speed>1?`${Math.round((d.speed-1)*100)}% quicker`:"",d.wear<1?`wears ${Math.round((1-d.wear)*100)}% slower`:""].filter(Boolean).join(" · ");
     return `<div style="margin:9px 0 2px;border-top:1px solid var(--edge);padding-top:8px">
       <div class="hd"><span class="nm">${d.en}</span><span class="lv">${Math.round(sh.cond)}/100${!t&&sh.cond<25?' <span style="color:var(--rust)">failing</span>':""}</span></div>
+      ${perks?`<div class="sub" style="color:var(--patina)">${perks}</div>`:`<div class="sub">the smallest hull — home waters only</div>`}
       ${body}</div>`;
    }).join("")+`</div>`;
  }
@@ -1985,13 +1987,25 @@ function view_sea(s){
       }
       const fit=fitOf(s,p), shr=shareOf(s,p);
       const senders=canReach?idle.filter(x=>shipCanSail(x.sh,p.id)):[];
+      const lowStores=s.res.stores<p.stores, lowSilver=s.res.silver<fit;
       const btns=senders.length?senders.map(x=>{
-        const ok=s.res.stores>=p.stores&&x.sh.cond>=p.wear+10&&s.res.silver>=fit;
-        return `<button data-sail="${p.id}|${x.i}" ${ok?"":"disabled"}>${s.fleet.length>1?shipDef(x.sh.tier).en.toLowerCase():"sail"}</button>`;
+        const worn=x.sh.cond<p.wear+10, ok=!lowStores&&!lowSilver&&!worn;
+        // the ship's own voyage time (÷ her speed), so a faster hull reads as faster here
+        const label=(s.fleet.length>1?shipDef(x.sh.tier).en.toLowerCase():"sail")+" · "+dur(voyMs(s,x.sh,p));
+        return `<button data-sail="${p.id}|${x.i}" ${ok?"":"disabled"}>${label}</button>`;
       }).join(""):`<span class="sub" style="color:var(--dim)">${canReach?"no ship free":"—"}</span>`;
+      // if she can't be sent, say why — the shared shortages first, then a worn hull
+      const why=[];
+      if(canReach&&senders.length){
+        if(lowStores)why.push(`wants ${p.stores} stores, ${f(s.res.stores)} in hand`);
+        if(lowSilver)why.push(`wants ${nfm(fit)} silver to fit, ${nfm(s.res.silver)} in the purse`);
+        if(!lowStores&&!lowSilver&&senders.every(x=>x.sh.cond<p.wear+10))why.push("every free ship is too worn — mend one first");
+      }
+      const cr=short=>short?"var(--rust)":"var(--dim)";
       return `<div class="row"><span>${p.en}
-        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · ${p.stores} stores · ${nfm(fit)} to fit · they take ${Math.round(shr*100)}%</div>
-        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div></span>
+        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · <span style="color:${cr(lowStores)}">${p.stores} stores</span> · <span style="color:${cr(lowSilver)}">${nfm(fit)} to fit</span> · they take ${Math.round(shr*100)}%</div>
+        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div>
+        ${why.length?`<div class="sub" style="color:var(--rust)">${why.join(" · ")}</div>`:""}</span>
         <span class="give" style="max-width:52%">${btns}</span></div>`;
      }).join("");
    h+=sect(s,"sea_"+sea.id, sea.en+tag, `${openCount}/${ports.length}`, body, unlocked&&canReach&&!complete);

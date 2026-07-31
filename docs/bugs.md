@@ -8,8 +8,14 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ---
 
-## 1. 🔴 Ships feel identical on the same route
+## 1. 🟡 Ships feel identical on the same route
 Sailing the coastal run with a færing vs a knarr shows no difference.
+
+**Surfacing done (v0.17.8):** each sail button now shows *that ship's* actual voyage
+time (`voyMs`, ÷ her speed), so a knarr visibly beats a færing at the point of
+decision; the fleet card lists each ship's perks (more hold · quicker · wears
+slower). **Still open (balance/decision):** making `fit` scale with ship tier,
+widening the speed/cargo gaps, and letting `cargo` raise the rare-find chance.
 
 **Reality under the hood:** ships *do* differ — `voyMs` divides the voyage time by
 `ship.speed` (knarr ×1.15, longship ×1.35) and `rollHaul` multiplies silver by
@@ -70,8 +76,12 @@ level (`REC` tier-1 tools), independent of tier, so a product-craft tool can be
 worked out before a raw-craft one. Gate/order them so raw → processed → product,
 matching the chain (and the dependency order the road already teaches in).
 
-## 8. 🔴 Market overhaul (naming, refresh behaviour, per-market rules)
+## 8. 🟡 Market overhaul (naming, refresh behaviour, per-market rules)
 Bigger pass on the kaupstefna markets.
+
+**Naming slice done (v0.17.8):** the market is now labelled "Kaupstefna — <port>" (and
+the open/close log lines match), using the kaupstefna term over the port's own name.
+The refresh-behaviour rules and per-market offer rules below are still open.
 
 **Naming.** They're generically labelled "Market — <port>". Should use the
 kaupstefna terminology and each market should have a proper name (design.md §9 has
@@ -146,9 +156,13 @@ Elder counsel is opaque without knowing the current level cap. Show the `softCap
 the Hall description (e.g. "raising the hall lifts the skill cap to 50 (now 40)") so
 the lore's value is legible.
 
-## 17. 🔴 A ship that can't be sent out must say why
+## 17. ✅ A ship that can't be sent out must say why
 When a ship can't sail (not enough stores, too worn, etc.), say why — colour-code the
 missing input (e.g. stores) like the Work tab should for missing craft inputs (#6).
+
+**Fixed (v0.17.8):** the port row now reds the short requirement (stores / silver to
+fit) and prints a reason line — "wants N stores, M in hand", "wants N silver to fit,
+M in the purse", or "every free ship is too worn — mend one first".
 
 ## 18. ✅ Sea-tab indicator when a market is open
 Add a marker to the Sea tab when a market is up (an "M" in the corner is fine for now).
