@@ -1,7 +1,8 @@
 # Bug & polish list
 
-Reported by Rakel, to tackle later. Nothing here is fixed yet. Newest build when
-filed: **v0.17.1**.
+Reported by Rakel, to tackle later. Newest build when filed: **v0.17.1**.
+
+Fixed so far (easy wins / clear bugs): #3, #10, #14 (verified), #18, #22.
 
 Status key: 🔴 open · 🟡 in progress · ✅ done
 
@@ -32,10 +33,13 @@ add a "break her up" action (probably returns a fraction of her hull), or decide
 intended design is that you must run a ship to the ground before building a new one
 (and make that legible). **Decision needed:** scrap action vs. run-to-ground-only.
 
-## 3. 🔴 "Set the table" copy is stale
+## 3. ✅ "Set the table" copy is stale
 The board text says "one pot for every mouth" — no longer true since the table cost
 was changed to scale by appetite (`tableCost` uses `potShare`, so a strong hand eats
 more than one). Wording-only fix in `view_work`'s board card.
+
+**Fixed:** copy now reads "more for a full hall and stronger hands", matching the
+appetite-scaled `tableCost`.
 
 ## 4. 🔴 Crew hiring cost curve is too steep
 Hiring gets expensive too fast. Balance pass on the offer/replace cost
@@ -98,10 +102,15 @@ Under "What is moving", tapping a resource whose net flow is **negative** should
 also show how long until it runs out (time-to-empty), the mirror of the "full in
 Xm" shown for positive flows.
 
-## 10. 🔴 Times shown as decimal minutes instead of m/s
+## 10. ✅ Times shown as decimal minutes instead of m/s
 Some times render like "2.8 minutes" (seen in Lore, possibly elsewhere) — should be
 minutes-and-seconds, e.g. "2m 48s". Likely the lore mins values (`loreMins`) printed
 raw instead of going through `dur()`. Audit for other decimal-minute displays.
+
+**Fixed:** the Lore row footer was the one raw `${loreMins(s,r)} min` display; it now
+goes through `dur(loreMins(s,r)*60000)` → "2m 48s". Audited the rest — every other
+`loreMins` use already multiplies to ms before display (e.g. `loreMins(s,r)*60000`),
+so this was the only offender.
 
 ## 11. 🔴 Unify luck; rebalance amulets
 Byproducts, rare mats at sea, market offers, and sea charts should all be driven by
@@ -116,10 +125,17 @@ The shortcut equip popups (crew equipment, and the player's on the Work panel)
 **undermine the "tools to hand" ørlǫg line** — remove them. Instead, tapping a slot
 should highlight/show the equipment **inside the slot**, not open a picker popup.
 
-## 14. 🐛 Market "sell one" (rare) doesn't consume / can keep selling
+## 14. ✅ Market "sell one" (rare) doesn't consume / can keep selling
 Selling a rare at a market: the row doesn't disappear and you can keep selling past
 what you hold. Real bug — check `sellRare` guard + the market section redraw (stateSig
 now uses COMP counts, but the row may not be updating / the guard may not bite).
+
+**Verified fixed:** with `stateSig` now including `COMP.map(k=>s.res[k]||0)`, selling a
+rare changes the signature and forces a redraw; the rare rows are built from
+`COMP.filter(k=>s.res[k]>0)`, so the row drops out at zero. The `sellRare` guard
+(`if((s.res[k]||0)<1)`) bites on integer counts, so you can't sell past what you hold —
+a repeat tap during the ~1.2s touch-freeze window just shows "You have none to sell".
+No code change needed beyond the earlier stateSig fix.
 
 ## 15. 🔴 Season's work rewards: no recipes or sea mats
 The season's-work band should not reward recipes or materials that come from the sea.
@@ -134,8 +150,12 @@ the lore's value is legible.
 When a ship can't sail (not enough stores, too worn, etc.), say why — colour-code the
 missing input (e.g. stores) like the Work tab should for missing craft inputs (#6).
 
-## 18. 🔴 Sea-tab indicator when a market is open
+## 18. ✅ Sea-tab indicator when a market is open
 Add a marker to the Sea tab when a market is up (an "M" in the corner is fine for now).
+
+**Fixed:** `draw()` now appends a gold **M** to the Sea tab label whenever
+`s.markets.length` is non-zero, and clears it when the last market closes. Updates on
+the same signature change (`s.markets`) that already triggers redraws.
 
 ## 19. 🔴 Flow panel should include meals/pots when auto-table is on
 "What is moving" is confusing when the standing board (auto set table) is on because
@@ -150,9 +170,15 @@ broader wage economy.)
 Step ~34 "Sail the east way" no longer fits now that waters unlock in sequence —
 rework it to be about sailing/charting all the waters.
 
-## 22. 🐛 Crew don't stop when out of silver
+## 22. ✅ Crew don't stop when out of silver
 Crew are supposed to stop working when the purse is empty (`doCycle` has an unpaid
 check), but they keep going. Investigate — real bug.
+
+**Fixed:** the unpaid check ran *after* inputs were already deducted, so an unpaid
+crew's cycle burned raw materials (timber, ore, …) every tick and returned before
+producing anything — they looked like they were "still working". Reordered `doCycle`
+so the purse is checked (and the `unpaid` flag set) *before* any inputs are spent:
+now an unpaid hand consumes nothing and produces nothing until there's silver again.
 
 ## 23. 🔴 Processor/gatherer ratio breaks across levels
 Burning charcoal (kiln) at level 19 consumes **less** timber than a level-16 crew
