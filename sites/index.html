@@ -567,10 +567,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.6";
-const BUILT="31 Jul 2026 · 10:35 UTC";
+const BUILD="v0.17.7";
+const BUILT="31 Jul 2026 · 10:41 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Swapping a task now takes less room and asks twice before it spends silver, and a tap riding a scroll no longer fires by mistake — fewer fat-finger mishaps on a phone.";
+const NOTES="Two iOS fixes: the “new build” bar now actually brings the update in, and reading a hall back no longer sticks on “opening it” — both stopped leaning on a page reload the home-screen app wouldn't do.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2429,6 +2429,7 @@ function fire(t){
  else if(t.id==="openrag"){S.picking=true;S.picks=[];lastSig="";maybeDraw();}
  else if(t.id==="cancelrag"){S.picking=false;S.picks=[];lastSig="";maybeDraw();}
  else if(t.id==="dorag")reckon();
+ else if(t.id==="fresh") bringItIn();
  else if(t.id==="dlsv") downloadSave();
  else if(t.id==="expt"){ const b=document.getElementById("savebox");
    b.value=exportSave(); S.kept=Date.now(); b.focus(); b.select();
@@ -2544,7 +2545,19 @@ async function readIn(){
   catch(_){ /* no clipboard permission / not supported — fall through */ }
  }
  if(!txt){ if(b)b.focus(); toast("Copy a hall first, or paste one into the box"); return; }
- if(importSave(txt)){ toast("Hall read in — opening it"); setTimeout(()=>location.reload(),700); }
+ // importSave writes the hall to storage; open it in place rather than reloading —
+ // iOS home-screen apps don't reliably reload, which left this stuck on "opening it".
+ if(importSave(txt)){ toast("Hall read in"); openSaved(); }
+}
+/* Load whatever is in storage into the running game and redraw — the boot sequence,
+   minus the page load. Used after reading a hall in, so no navigation is needed. */
+function openSaved(){
+ S=fresh();
+ const ok=loadGame();
+ if(ok){ catchUp(); if(!S.offers||!S.offers.length)rollOffers(); }
+ else { rollDaily(); rollWeekly(); rollOffers(); }
+ for(const k in _c)delete _c[k];   // force every cached panel to redraw for the new hall
+ last=performance.now(); lastSig=""; maybeDraw(); paint();
 }
 function importSave(txt){
  try{
@@ -2673,26 +2686,36 @@ if(canSave){
    newer than the one running, a bar drops down offering a one-tap refresh that
    loads the fresh page (a fresh URL, so the cache can't serve the old one).
    Offline or blocked, it stays silent and you keep playing on what you have. */
-let freshT=0;
+let freshT=0, freshHtml=null;
 async function checkFresh(){
  if(location.protocol==="file:")return;                    // a local test copy — nothing to fetch
  if(Date.now()-freshT<30000)return; freshT=Date.now();     // at most once every 30s
  try{
   const r=await fetch(location.pathname+"?_fresh="+Date.now(),{cache:"no-store"});
   if(!r.ok)return;
-  const m=(await r.text()).match(/const BUILD="([^"]+)"/);
-  if(m&&m[1]&&m[1]!==BUILD)showFresh(m[1]);
+  const txt=await r.text();
+  const m=txt.match(/const BUILD="([^"]+)"/);
+  if(m&&m[1]&&m[1]!==BUILD){ freshHtml=txt; showFresh(m[1]); }   // keep the fresh page in hand
  }catch(_){}
 }
 function showFresh(v){
  if(document.getElementById("fresh"))return;
- const b=document.createElement("div"); b.id="fresh";
- b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:9999;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;"
-  +"text-align:center;cursor:pointer;background:var(--gold);color:var(--ink);"
-  +"font:600 13px/1.35 'IBM Plex Sans',system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.55)";
+ // a real button, so it rides the same tap path as everything else — a plain div's
+ // click can be swallowed on iOS and the bar looked dead
+ const b=document.createElement("button"); b.id="fresh"; b.type="button";
+ b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:9999;width:100%;border:0;"
+  +"padding:calc(10px + env(safe-area-inset-top)) 14px 10px;text-align:center;cursor:pointer;"
+  +"background:var(--gold);color:var(--ink);font:600 13px/1.35 'IBM Plex Sans',system-ui,sans-serif;"
+  +"box-shadow:0 2px 12px rgba(0,0,0,.55);min-height:0";
  b.innerHTML=`A new build (${v}) has landed — <b>tap to bring it in</b>`;
- b.onclick=()=>{ try{ if(canSave)saveGame(); }catch(_){}; location.replace(location.pathname+"?v="+encodeURIComponent(v)); };
  document.body.appendChild(b);
+}
+/* iOS home-screen apps won't reliably navigate or reload, so don't try — we already
+   fetched the fresh page, so write it straight into the document in place. */
+function bringItIn(){
+ try{ if(canSave)saveGame(); }catch(_){}
+ if(freshHtml){ try{ document.open(); document.write(freshHtml); document.close(); return; }catch(_){} }
+ try{ location.reload(); }catch(_){}
 }
 checkFresh();
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible")checkFresh(); });
