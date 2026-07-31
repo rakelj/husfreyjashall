@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.12";
-const BUILT="31 Jul 2026 · 19:58 UTC";
+const BUILD="v0.17.13";
+const BUILT="31 Jul 2026 · 20:13 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Fitting a crew hand now marks the best tool for them, so the right pick is plain at a glance.";
+const NOTES="The app now updates itself: a service worker fetches the freshest build every launch, so a home-screen hall keeps current with no tapping (and plays offline). This is the last re-add.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2751,6 +2751,12 @@ checkFresh();
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible")checkFresh(); });
 window.addEventListener("focus",checkFresh);
 window.addEventListener("pageshow",checkFresh);
+// the real fix for home-screen staleness: a network-first service worker (sw.js) that
+// serves the freshest build on every launch, so the app updates itself with no tap.
+// The bar above stays as a fallback for a build that lands while you are already in.
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+ navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
 
 </script>
 </body>

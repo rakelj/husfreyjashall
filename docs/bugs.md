@@ -246,10 +246,21 @@ hold as levels diverge. Rework how processing input rates scale with level.
 Errands (and the other task bands) should scale their quantities and rewards by the
 player's skill level, instead of fixed amounts.
 
-## 25. 🔴 Fully tap-free updates (service worker) + offline play
+## 25. ✅ Fully tap-free updates (service worker) + offline play
 v0.17.4 added an on-launch update check that fetches the live `BUILD` and offers a
 one-tap refresh bar — good enough that a home-screen hall never sticks on an old
 build, but it still costs a tap and needs a network reachable at launch.
+
+**Done (v0.17.13):** added `sw.js` — a **network-first** service worker registered from
+`index.html` with a relative path (scope = the Pages project path). On every launch it
+fetches the app fresh (`fetch('./',{cache:'no-store'})`, raced against a 4s timeout),
+stashes a copy, and serves that copy only when the network can't be reached — so the
+home-screen app updates itself with **no tap** and still plays offline. `skipWaiting` +
+`clients.claim` + old-cache cleanup on activate, so a new SW takes over at once and can
+never strand you on stale content while online. The in-page `checkFresh()` bar is kept
+as a fallback for a build that lands while you're already in. **Bootstrap caveat holds:**
+the SW installs only once a build containing its registration is loaded, so getting onto
+v0.17.13 still needs the one manual re-add — the last one.
 
 For **transparent** updates (fresh build loads silently on launch) and **offline
 play**, add a small service worker (`sw.js`) doing **network-first for navigations**:
