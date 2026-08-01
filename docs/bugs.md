@@ -314,10 +314,23 @@ producing anything — they looked like they were "still working". Reordered `do
 so the purse is checked (and the `unpaid` flag set) *before* any inputs are spent:
 now an unpaid hand consumes nothing and produces nothing until there's silver again.
 
-## 23. 🔴 Processor/gatherer ratio breaks across levels
+## 23. ✅ Processor/gatherer ratio breaks across levels
 Burning charcoal (kiln) at level 19 consumes **less** timber than a level-16 crew
 brings in felling old timber. The intended ~1.5–1.8 processor:gatherer ratio doesn't
 hold as levels diverge. Rework how processing input rates scale with level.
+
+**Fixed (v0.17.22):** the root cause — a gatherer's **output** scaled with yield (∝ level)
+but a processor's **input** was flat per cycle, so it scaled only with speed and fell
+behind as levels rose. Now a craft's per-cycle input is **scaled by the same yield as its
+output** (`eUse(a, yld, k) = a.use[k]·yld·oreMod`), so a leveled kiln eats timber as fast
+as it makes charcoal and the throughput ratio holds across levels (and equalises when a
+processor and gatherer are the same level). Routed **every** input read through `eUse` so
+consumption, the tick's run/stall gates, the flow panel, and the "uses N" labels all
+agree — the labels now show the real per-cycle amount (via a `yldFor(s, sk)` helper for
+the Work-tab buttons, which have no live runner). At level 1 `yld ≈ 1`, so early play is
+unchanged. `doCycle` still checks before it consumes, so nothing can go negative.
+_Balance note: conversion **ratio** now holds, but leveling a processor no longer makes it
+more input-*efficient* (only faster); tune per-recipe `use` values if a chain feels off._
 
 ## 24. ✅ Tasks should scale scope + reward with skill level
 Errands (and the other task bands) should scale their quantities and rewards by the

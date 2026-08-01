@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.21";
-const BUILT="01 Aug 2026 · 18:20 UTC";
+const BUILD="v0.17.22";
+const BUILT="01 Aug 2026 · 18:25 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Ships feel their size now: a knarr and a longship are quicker and hold far more, cost more to fit out, and a bigger hold brings rare things home more often.";
+const NOTES="Processing now keeps pace with gathering as levels climb — a busy kiln eats timber as fast as it makes charcoal — so raw stuff no longer piles up under a high-level crew.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -601,7 +601,7 @@ function wageRate(s){   // per second, for the flow panel only
  let r=0;
  s.crew.forEach((c,i)=>{ if(!working(s,i))return;
   const R=runner(s,c); if(!R)return;
-  const short=R.a.use&&Object.keys(R.a.use).some(k=>s.res[k]<R.a.use[k]);
+  const short=R.a.use&&Object.keys(R.a.use).some(k=>s.res[k]<eUse(R.a,R.yld,k));
   if(short||s.starved)return;
   r+=wageFor(s,c)/R.secs; });
  return r;
@@ -813,12 +813,19 @@ function runner(s,c){
  const yld=(1+0.055*(L-1))*(1+eqBonus(eq,a.sk,"yield")*RX.tool())*RX.age()*RX.table()*(MAKING.includes(a.sk)?RX.make():1);
  return{a,L,secs:a.secs/spd,yld,xpm:1+eqBonus(eq,a.sk,"xp")};
 }
+// per-cycle input, scaled by the SAME yield as the output — so a higher-level processor
+// eats timber as fast as it turns out charcoal, and the processor:gatherer ratio holds
+// as levels diverge (before, input was flat per cycle and processors fell behind).
+const eUse=(a,yld,k)=>a.use[k]*(yld||1)*(k==="ore"?RX.ore():1);
+// the yield you (the player) would get at a craft — for the Work tab's "uses" labels,
+// which have no live runner to read from
+const yldFor=(s,sk)=>(1+0.055*(myL(s,sk)-1))*(1+eqBonus(s.eq,sk,"yield")*RX.tool())*RX.age()*RX.table()*(MAKING.includes(sk)?RX.make():1);
 function doCycle(s,c){
  const _a=ACT[c?c.act:s.act];
  if(s.starved&&!(_a&&_a.out&&_a.out.food))return;   // when the hall starves, only work that brings in food goes on — anyone's, not just yours
  const R=runner(s,c);if(!R)return;
  const a=R.a;
- const uc=k=>a.use[k]*(k==="ore"?RX.ore():1);
+ const uc=k=>eUse(a,R.yld,k);
  if(a.use)for(const k in a.use)if(s.res[k]<uc(k))return;
  // a hand won't work unpaid — check the purse before spending any inputs, or the
  // stores are burned through with nothing to show while the silver is out
@@ -854,14 +861,14 @@ function advance(dt){
   const s=S;s.t+=dt;
  // player
  const R=runner(s,null);
- if(R){const need=R.a.use?Object.keys(R.a.use).every(k=>s.res[k]>=R.a.use[k]):true;
+ if(R){const need=R.a.use?Object.keys(R.a.use).every(k=>s.res[k]>=eUse(R.a,R.yld,k)):true;
   if(need){s.prog+=dt;while(s.prog>=R.secs*1000){s.prog-=R.secs*1000;doCycle(s,null);}}
   else s.prog=Math.min(s.prog,R.secs*1000);}
  // crew
  s.crew.forEach((c,i)=>{
   if(c.rest||c.away||i>=HALL[s.hall].crew)return;   // set down, or over the roof
   const r=runner(s,c);if(!r)return;
-  const ok=r.a.use?Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]):true;
+  const ok=r.a.use?Object.keys(r.a.use).every(k=>s.res[k]>=eUse(r.a,r.yld,k)):true;
   if(!ok)return;
   c.prog+=dt;while(c.prog>=r.secs*1000){c.prog-=r.secs*1000;doCycle(s,c);}});
  // voyage
@@ -959,12 +966,12 @@ function flows(s){
   const R=runner(s,c); if(!R)return;
   const who=c?c.name:"you";
   if(c&&(c.rest||i>=HALL[s.hall].crew)){ idle.push({who,why:c.rest?"set down":"no room"}); return; }
-  const short=R.a.use&&Object.keys(R.a.use).filter(k=>s.res[k]<R.a.use[k]*(k==="ore"?RX.ore():1));
+  const short=R.a.use&&Object.keys(R.a.use).filter(k=>s.res[k]<eUse(R.a,R.yld,k));
   if(s.starved&&!R.a.out.food){ idle.push({who,why:"nothing to eat"}); return; }
   if(short&&short.length){ idle.push({who,why:"no "+short.join(", ")}); return; }
   const per=60/R.secs;
   for(const k in R.a.out) add(k,R.a.out[k]*R.yld*per,who);
-  if(R.a.use)for(const k in R.a.use) add(k,-R.a.use[k]*(k==="ore"?RX.ore():1)*per,who);
+  if(R.a.use)for(const k in R.a.use) add(k,-eUse(R.a,R.yld,k)*per,who);
   if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*(1+luckOf(s)))*per,who);
  };
  one(null,-1); s.crew.forEach((c,i)=>one(c,i));
@@ -1741,12 +1748,12 @@ function view_work(s){
    h+=`<div class="card"><h2>Idle</h2><div class="note">You are standing on the shore doing nothing.
     Choose a work below and it will run on its own — while you read, and while the app is shut.</div></div>`;
   } else {
-  const stall=a.use&&!Object.keys(a.use).every(k=>s.res[k]>=a.use[k]);
+  const stall=a.use&&!Object.keys(a.use).every(k=>s.res[k]>=eUse(a,R.yld,k));
   h+=`<div class="card act"><div class="hd"><span class="nm">${a.en}</span><span class="lv">${SK[a.sk]} ${myL(s,a.sk)}</span></div>
-   <div class="sub">${Object.entries(a.out).map(([k,v])=>`+${f(v*R.yld)} ${k}`).join(", ")} every ${R.secs.toFixed(1)}s${a.use?` · uses ${Object.entries(a.use).map(([k,v])=>v+" "+k).join(", ")}`:""}${a.rare?` · sometimes ${(CN[Object.keys(a.rare)[0]]||Object.keys(a.rare)[0]).toLowerCase()}`:""}</div>
+   <div class="sub">${Object.entries(a.out).map(([k,v])=>`+${f(v*R.yld)} ${k}`).join(", ")} every ${R.secs.toFixed(1)}s${a.use?` · uses ${Object.keys(a.use).map(k=>f(eUse(a,R.yld,k))+" "+k).join(", ")}`:""}${a.rare?` · sometimes ${(CN[Object.keys(a.rare)[0]]||Object.keys(a.rare)[0]).toLowerCase()}`:""}</div>
    <div class="bar"><i id="pb" style="width:${stall?0:pct(s.prog,R.secs*1000)}%"></i></div>
    <div class="bar xp sm"><i id="px" style="width:${xpBar(s.xp[a.sk])}%"></i></div>
-   ${stall?`<div class="sub" style="color:var(--rust)">Stopped — no ${Object.keys(a.use).filter(k=>s.res[k]<a.use[k]).join(", ")}</div>`:""}
+   ${stall?`<div class="sub" style="color:var(--rust)">Stopped — no ${Object.keys(a.use).filter(k=>s.res[k]<eUse(a,R.yld,k)).join(", ")}</div>`:""}
    ${(()=>{
      const worn=s.eq.tool, wr=worn?REC.find(x=>x.id===worn.rec):null;
      const b=bestToolFor(s,a.sk);
@@ -1791,12 +1798,13 @@ function view_work(s){
       on.map(o=>o.c.name+(o.working?(o.c.rest?" — set down":""):" — no room")).join(", ")}</span>`:"";
     return `<div style="margin-bottom:9px">
      <div class="sub" style="margin-bottom:4px">${SK[sk]} ${myL(s,sk)}${who?" · "+who:""}</div>
-     <div class="grid">`+acts.map(k=>{const x=ACT[k];
-      const want=x.use&&!Object.keys(x.use).every(r=>s.res[r]>=x.use[r]);
+     <div class="grid">`+acts.map(k=>{const x=ACT[k], xy=yldFor(s,x.sk);
+      const use=r=>eUse(x,xy,r);
+      const want=x.use&&!Object.keys(x.use).every(r=>(s.res[r]||0)>=use(r));
       return `<button class="pick ${s.act===k?"on":""} ${want?"want":""}" data-act="${k}" data-who="me">
        <b>${x.en}</b><small>${Object.entries(x.out).map(([r,v])=>"+"+v+" "+r).join(", ")} · ${x.secs}s${
         x.rare?" · "+Object.keys(x.rare)[0]:""}</small>${
-        x.use?`<span class="who">uses ${Object.entries(x.use).map(([r,v])=>`<span${(s.res[r]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${r}</span>`).join(", ")}</span>`:""}</button>`;}).join("")
+        x.use?`<span class="who">uses ${Object.keys(x.use).map(r=>`<span${(s.res[r]||0)>=use(r)?"":` style="color:var(--rust)"`}>${f(use(r))} ${r}</span>`).join(", ")}</span>`:""}</button>`;}).join("")
      +`</div></div>`;}).join("");}).join("")
    +`${s.unlocked.length<19?`<div class="note" style="margin-top:4px">More work opens as you go.</div>`:""}
    ${TIER(s,"hand")?`<button data-auto="hand" style="margin-top:8px;width:100%;${autoOn(s,"hand")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"hand")?"tools come to hand":"you change tools yourself"}</button>`:""}</div>`;
@@ -1846,15 +1854,15 @@ function view_crew(s){
  let h="";
   const meR=runner(s,null), luck=luckOf(s);
   h+=`<div class="card"><h2>You <span class="sub mono" style="color:${luck>0?"var(--gold)":"var(--dim)"}">fortune +${Math.round(luck*100)}%</span></h2>${meR
-    ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.entries(meR.a.use).map(([k,v])=>`<span${(s.res[k]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${k}</span>`).join(", ")}`:""}</div>`
+    ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.keys(meR.a.use).map(k=>`<span${(s.res[k]||0)>=eUse(meR.a,meR.yld,k)?"":` style="color:var(--rust)"`}>${f(eUse(meR.a,meR.yld,k))} ${k}</span>`).join(", ")}`:""}</div>`
     :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}
     ${luck>0?`<div class="sub" style="color:var(--dim)">Every amulet in the hall, together — more byproducts, more rare things at sea, richer markets and more charts.</div>`:""}${eqHtml(s.eq,"me")}</div>`;
   s.crew.forEach((c,i)=>{const r=runner(s,c);
-   const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]);
+   const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=eUse(r.a,r.yld,k));
    const capped=cL(c,r.a.sk)>=(c.capL||99);
    const noRoom=i>=HALL[s.hall].crew;
    h+=`<div class="card"><div class="hd"><span class="nm">${c.name}</span><span class="lv">${SK[r.a.sk]} ${cL(c,r.a.sk)} / ${c.capL||"?"}</span></div>
-    <div class="sub">${r.a.en} — ${Object.entries(r.a.out).map(([k,v])=>`+${f(v*r.yld)} ${k}`).join(", ")} / ${r.secs.toFixed(1)}s${r.a.use?` · uses ${Object.entries(r.a.use).map(([k,v])=>v+" "+k).join(", ")}`:""}</div>
+    <div class="sub">${r.a.en} — ${Object.entries(r.a.out).map(([k,v])=>`+${f(v*r.yld)} ${k}`).join(", ")} / ${r.secs.toFixed(1)}s${r.a.use?` · uses ${Object.keys(r.a.use).map(k=>f(eUse(r.a,r.yld,k))+" "+k).join(", ")}`:""}</div>
     <div class="bar"><i id="cb${i}" style="width:${c.away?0:pct(c.prog,r.secs*1000)}%"></i></div>
     <div class="bar xp sm"><i id="cx${i}" style="width:${xpBar(c.xp[r.a.sk]||0)}%"></i></div>
     ${(()=>{const acts=Object.keys(ACT).filter(k=>ACT[k].sk===r.a.sk&&s.unlocked.includes(k));
@@ -1864,7 +1872,7 @@ function view_crew(s){
         return `<button data-act="${k}" data-who="${i}" style="${c.act===k?"border-top-color:var(--gold);color:var(--gold)":"opacity:.55"}">${x.en}</button>`;}).join("")
        +`</div>`;})()}
     ${noRoom?`<div class="sub" style="color:var(--rust)">No room under the roof — ${SHE(c)} does nothing until the hall is raised.</div>`
-      :stall?`<div class="sub" style="color:var(--rust)">Standing idle — no ${Object.keys(r.a.use).filter(k=>s.res[k]<r.a.use[k]).join(", ")}</div>`:""}
+      :stall?`<div class="sub" style="color:var(--rust)">Standing idle — no ${Object.keys(r.a.use).filter(k=>s.res[k]<eUse(r.a,r.yld,k)).join(", ")}</div>`:""}
     ${(()=>{const A=allot(s);
       const want=Object.keys(SLOTS).map(sl=>A.need[i+"|"+sl]).filter(nd=>nd&&nd.wants);
       if(!want.length)return "";
@@ -2350,7 +2358,7 @@ function paint(){
  if(tab==="work"){
   if(atTable(s))W("tbl",pct(s.table,s.tableMax||1));
   const R=runner(s,null);
-  if(R){const stall=R.a.use&&!Object.keys(R.a.use).every(k=>s.res[k]>=R.a.use[k]);
+  if(R){const stall=R.a.use&&!Object.keys(R.a.use).every(k=>s.res[k]>=eUse(R.a,R.yld,k));
    W("pb",stall?0:pct(s.prog,R.secs*1000)); W("px",xpBar(s.xp[R.a.sk]));}
   Object.keys(SK).forEach(k=>W("sx_"+k,xpBar(s.xp[k])));
  }
@@ -2383,7 +2391,7 @@ function paint(){
    :(hallReady||orlReady)?'<span class="dot"></span>':""));
  // your own work stopped for want of materials
  const R0=runner(s,null);
- const stuck=!s.act||(R0&&R0.a.use&&Object.keys(R0.a.use).some(k=>s.res[k]<R0.a.use[k]));
+ const stuck=!s.act||(R0&&R0.a.use&&Object.keys(R0.a.use).some(k=>s.res[k]<eUse(R0.a,R0.yld,k)));
  set("tw","Work"+(stuck?'<span class="dot" style="background:var(--rust)"></span>':""));
  // someone at the gate you can afford, with room for them
  const canHire=s.crew.length<HALL[s.hall].crew&&(s.offers||[]).some(o=>s.res.silver>=o.cost);
@@ -2729,7 +2737,7 @@ function catchUp(){
  const lost=Object.entries(S.lost||{}).filter(([,v])=>v>1).sort((a,b)=>b[1]-a[1]).slice(0,3)
    .map(([k,v])=>`${nfm(v)} ${k}`).join(", ");
  const idle=S.crew.filter((c,i)=>{ if(i>=HALL[S.hall].crew)return true;
-   const r=runner(S,c); return r&&r.a.use&&Object.keys(r.a.use).some(k=>S.res[k]<r.a.use[k]); })
+   const r=runner(S,c); return r&&r.a.use&&Object.keys(r.a.use).some(k=>S.res[k]<eUse(r.a,r.yld,k)); })
    .map(c=>c.name);
  // what the things you bought actually did while you were gone
  const sailed=after.voy-before.voy, mended=after.mends-before.mends;
