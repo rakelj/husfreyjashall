@@ -303,9 +303,9 @@ const VOY_SCALE=16;
    may keep a fleet: each ship sails on its own, so several can be at sea at once.
    reach: which waters she can cross (0 home · 1 west/north · 2 east). */
 const SHIPS=[
- {id:"faering", en:"Færing",   build:{hull:20,sailcloth:8},           reach:0, speed:1.0,  wear:1.0,  cargo:1.0},
- {id:"knarr",   en:"Knarr",    build:{hull:80,sailcloth:34,iron:20},  reach:1, speed:1.15, wear:0.82, cargo:1.7},
- {id:"longship",en:"Longship", build:{hull:200,sailcloth:90,iron:70}, reach:2, speed:1.35, wear:0.70, cargo:2.5}
+ {id:"faering", en:"Færing",   build:{hull:20,sailcloth:8},           reach:0, speed:1.0,  wear:1.0,  cargo:1.0, fitx:1.0},
+ {id:"knarr",   en:"Knarr",    build:{hull:80,sailcloth:34,iron:20},  reach:1, speed:1.25, wear:0.80, cargo:2.1, fitx:1.7},
+ {id:"longship",en:"Longship", build:{hull:200,sailcloth:90,iron:70}, reach:2, speed:1.55, wear:0.66, cargo:3.4, fitx:2.6}
 ];
 /* Four waters, west to east, each with its own bias in the rare things it brings home.
    reach must be met by the ship that sails there. */
@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.20";
-const BUILT="01 Aug 2026 · 18:15 UTC";
+const BUILD="v0.17.21";
+const BUILT="01 Aug 2026 · 18:20 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Luck is now one thing — every amulet in the hall, together — and it turns byproducts, rare things at sea, market pay and charts alike. The amulets were dialled back, and your fortune shows on the Crew tab.";
+const NOTES="Ships feel their size now: a knarr and a longship are quicker and hold far more, cost more to fit out, and a bigger hold brings rare things home more often.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1477,7 +1477,8 @@ const seaComplete=(s,id)=>portsBySea(id).every(p=>portOpen(s,p.id));   // every 
 const seaUnlocked=(s,id)=>{const i=seaIndex(id);return i<=0||seaComplete(s,SEAS[i-1].id);};   // the water before it, fully charted
 const voyMs=(s,sh,p)=>p.mins*60000*VOY_SCALE*RX.voy()/shipDef(sh.tier).speed;   // p is a port object
 const shareOf=(s,p)=>Math.max(0.05,p.share*(1-0.12*TIER(s,"known")));
-const fitOf=(s,p)=>Math.round(p.fit*(1+0.25*(s.age||0))*(1-0.10*TIER(s,"known")));
+// fit scales with the ship — a bigger hull takes a bigger félag to fit out and provision
+const fitOf=(s,p,sh)=>Math.round(p.fit*(1+0.25*(s.age||0))*(1-0.10*TIER(s,"known"))*(sh?shipDef(sh.tier).fitx:1));
 function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
  const sh=s.fleet[shipIdx]; if(!sh){toast("No ship for that");return;}
  if(tripOf(s,shipIdx)){toast("She is already at sea");return;}
@@ -1486,7 +1487,7 @@ function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
  if(!shipCanSail(sh,portId)){toast(`A ${shipDef(sh.tier).en.toLowerCase()} cannot reach ${seaOfPort(portId).en.toLowerCase()}`);return;}
  if(sh.cond<=0){toast("There is nothing left of her to sail");return;}
  if(s.res.stores<p.stores){toast(`Wants ${p.stores} stores`);return;}
- const fit=fitOf(s,p);
+ const fit=fitOf(s,p,sh);
  if(s.res.silver<fit){toast(`${nfm(fit)} silver to fit her out and take a crew`);return;}
  s.res.silver-=fit; s.res.stores-=p.stores;
  sh.last=portId; s.sailed=[...new Set([...(s.sailed||[]),portId])];
@@ -1498,7 +1499,8 @@ function rollHaul(s,portId,sh){
  const luck=luckOf(s);
  const sv=Math.round((p.silver[0]+Math.random()*(p.silver[1]-p.silver[0]))*(1+luck*0.5)*RX.silver()*d.cargo);
  const comps={};
- for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*(1+luck))) comps[k]=(comps[k]||0)+1;
+ // a bigger hold has more room for rare things to ride home in
+ for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*(1+luck)*(0.8+0.2*d.cargo))) comps[k]=(comps[k]||0)+1;
  const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
  let way=null;
  // the finer gear is only ever shown to you, never worked out alone — but rarely
@@ -1538,7 +1540,7 @@ function scrapShip(fi){ const s=S,sh=s.fleet[fi]; if(!sh)return;
 // a hand on the tiller mends her from the hall's stores and puts her out again on her last water
 function autoTend(s,fi){ const sh=s.fleet[fi]; if(!sh||!sh.last)return; const p=portDef(sh.last); if(!p)return;
  let guard=0; while(TIER(s,"caulk")&&autoOn(s,"caulk")&&sh.cond<p.wear+10&&guard++<20){ if(!mendShip(s,fi,true))break; }
- if(!tripOf(s,fi)&&shipCanSail(sh,sh.last)&&portOpen(s,sh.last)&&s.res.stores>=p.stores&&sh.cond>=p.wear+10&&s.res.silver>=fitOf(s,p)) sail(sh.last,fi);
+ if(!tripOf(s,fi)&&shipCanSail(sh,sh.last)&&portOpen(s,sh.last)&&s.res.stores>=p.stores&&sh.cond>=p.wear+10&&s.res.silver>=fitOf(s,p,sh)) sail(sh.last,fi);
 }
 function land(ti){const s=S; const t=s.trips[ti]; if(!t)return;
  const p=portDef(t.dest), sh=s.fleet[t.ship];
@@ -2063,11 +2065,13 @@ function view_sea(s){
        return `<div class="row"><span style="color:var(--dim)">${p.en} <span class="tag">uncharted</span>
          <div class="sub">${canReach?`A chart from ${fr?fr.en.toLowerCase():"the deepest water here"} may open her.`:"Farther than your ships can reach."}</div></span></div>`;
       }
-      const fit=fitOf(s,p), shr=shareOf(s,p);
+      const shr=shareOf(s,p);
       const senders=canReach?idle.filter(x=>shipCanSail(x.sh,p.id)):[];
-      const lowStores=s.res.stores<p.stores, lowSilver=s.res.silver<fit;
+      const lowStores=s.res.stores<p.stores;
+      const fitFor=x=>fitOf(s,p,x.sh);                         // fit now varies by the ship you send
+      const fits=senders.map(fitFor), cheapest=fits.length?Math.min(...fits):fitOf(s,p), dearest=fits.length?Math.max(...fits):cheapest;
       const btns=senders.length?senders.map(x=>{
-        const worn=x.sh.cond<p.wear+10, ok=!lowStores&&!lowSilver&&!worn;
+        const fit=fitFor(x), worn=x.sh.cond<p.wear+10, ok=!lowStores&&s.res.silver>=fit&&!worn;
         // the ship's own voyage time (÷ her speed), so a faster hull reads as faster here
         const label=(s.fleet.length>1?shipDef(x.sh.tier).en.toLowerCase():"sail")+" · "+dur(voyMs(s,x.sh,p));
         return `<button data-sail="${p.id}|${x.i}" ${ok?"":"disabled"}>${label}</button>`;
@@ -2076,12 +2080,12 @@ function view_sea(s){
       const why=[];
       if(canReach&&senders.length){
         if(lowStores)why.push(`wants ${p.stores} stores, ${f(s.res.stores)} in hand`);
-        if(lowSilver)why.push(`wants ${nfm(fit)} silver to fit, ${nfm(s.res.silver)} in the purse`);
-        if(!lowStores&&!lowSilver&&senders.every(x=>x.sh.cond<p.wear+10))why.push("every free ship is too worn — mend one first");
+        if(!lowStores&&s.res.silver<cheapest)why.push(`wants ${nfm(cheapest)} silver to fit, ${nfm(s.res.silver)} in the purse`);
+        if(!lowStores&&s.res.silver>=cheapest&&senders.every(x=>x.sh.cond<p.wear+10))why.push("every free ship is too worn — mend one first");
       }
       const cr=short=>short?"var(--rust)":"var(--dim)";
       return `<div class="row"><span>${p.en}
-        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · <span style="color:${cr(lowStores)}">${p.stores} stores</span> · <span style="color:${cr(lowSilver)}">${nfm(fit)} to fit</span> · they take ${Math.round(shr*100)}%</div>
+        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · <span style="color:${cr(lowStores)}">${p.stores} stores</span> · <span style="color:${cr(fits.length&&s.res.silver<cheapest)}">${nfm(cheapest)}${dearest>cheapest?"–"+nfm(dearest):""} to fit</span> · they take ${Math.round(shr*100)}%</div>
         <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div>
         ${why.length?`<div class="sub" style="color:var(--rust)">${why.join(" · ")}</div>`:""}</span>
         <span class="give" style="max-width:52%">${btns}</span></div>`;

@@ -8,14 +8,22 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ---
 
-## 1. 🟡 Ships feel identical on the same route
+## 1. ✅ Ships feel identical on the same route
 Sailing the coastal run with a færing vs a knarr shows no difference.
 
-**Surfacing done (v0.17.8):** each sail button now shows *that ship's* actual voyage
-time (`voyMs`, ÷ her speed), so a knarr visibly beats a færing at the point of
-decision; the fleet card lists each ship's perks (more hold · quicker · wears
-slower). **Still open (balance/decision):** making `fit` scale with ship tier,
-widening the speed/cargo gaps, and letting `cargo` raise the rare-find chance.
+**Surfacing done (v0.17.8):** each sail button shows *that ship's* actual voyage time
+(`voyMs`, ÷ her speed); the fleet card lists each ship's perks (more hold · quicker ·
+wears slower).
+
+**Balance tail done (v0.17.21):**
+- **`fit` scales with the ship** — added `fitx` (færing 1.0 · knarr 1.7 · longship 2.6);
+  `fitOf(s,p,sh)` multiplies by it. The port row shows the fit as a range across your
+  free ships (`cheapest–dearest`) and each ship's affordability gates its own button.
+- **Wider speed/cargo gaps** so they're felt: knarr speed 1.15→**1.25**, cargo 1.7→**2.1**;
+  longship speed 1.35→**1.55**, cargo 2.5→**3.4** (wear a touch better too).
+- **`cargo` raises the rare-find chance** in `rollHaul` (`×(0.8 + 0.2·cargo)`) — a bigger
+  hold has more room for rare things to ride home, so a longship finds ~48% more often
+  than a færing.
 
 **Reality under the hood:** ships *do* differ — `voyMs` divides the voyage time by
 `ship.speed` (knarr ×1.15, longship ×1.35) and `rollHaul` multiplies silver by
