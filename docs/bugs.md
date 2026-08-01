@@ -340,8 +340,22 @@ consumption, the tick's run/stall gates, the flow panel, and the "uses N" labels
 agree — the labels now show the real per-cycle amount (via a `yldFor(s, sk)` helper for
 the Work-tab buttons, which have no live runner). At level 1 `yld ≈ 1`, so early play is
 unchanged. `doCycle` still checks before it consumes, so nothing can go negative.
-_Balance note: conversion **ratio** now holds, but leveling a processor no longer makes it
-more input-*efficient* (only faster); tune per-recipe `use` values if a chain feels off._
+**Confirmed with Rakel (^1.0, input scales exactly like output).** Spec: a processor should
+out-consume a gatherer at the same level, and still do so when the gatherer is higher.
+Measured on the timber chain (feller `3.2/6.5s` → kiln `4.5/5.5s`), consumption ÷ one
+gatherer's output:
+
+| case | old (broken) | now (^1.0) |
+|---|---|---|
+| equal levels, any L | 1.66 → **0.53** by L40 | **1.66, held at every level** |
+| reported bug: L16 feller vs L19 kiln | **1.01** (break-even) | **2.00** |
+| gatherer 14 levels above processor | 0.43 | 0.78 |
+
+Steeper options (`yield^1.3` / `^1.6`) were weighed and rejected: they'd cover bigger level
+gaps but push the late game to 2.3–3.3 gatherers per processor, away from the intended
+1.5–1.8. Note no exponent can guarantee "always more" for an *arbitrary* gap — a large
+enough one always wins; a novice kiln failing to keep up with a master feller is accepted
+as correct. _Levelling a processor makes it faster, not more input-efficient._
 
 ## 24. ✅ Tasks should scale scope + reward with skill level
 Errands (and the other task bands) should scale their quantities and rewards by the
