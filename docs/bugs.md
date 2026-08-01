@@ -110,7 +110,7 @@ raw-craft tool, a product-craft tool on a processed one; the chain holds by
 induction. Only affects future unlocks (never removes a known recipe), so old saves
 are unharmed. Non-tool gear (garment/rune/amulet) is unaffected.
 
-## 8. 🟡 Market overhaul (naming, refresh behaviour, per-market rules)
+## 8. ✅ Market overhaul (naming, refresh behaviour, per-market rules)
 Bigger pass on the kaupstefna markets.
 
 **Naming slice done (v0.17.8):** the market is now labelled "Kaupstefna — <port>" (and
@@ -129,8 +129,17 @@ timer and regenerating. Different ports still open their own separate markets. (
 repeated landings grow both without bound — fine for hand play; revisit if an auto-tiller
 fleet makes a home market effectively permanent.)
 
-Still open on #8: the base-material "¾ of stock" sell sizing, and the "richer / more
-variety the farther out" markets.
+**Offer rules done (v0.17.18):** `marketOffers` rewritten. Sell offers are now sized to
+**¾ of what your stores hold** of a material (`qty ≈ res·0.75`, min 5, capped at what you
+have), priced to that amount — a surplus sink instead of flat random quantities. Markets
+grow **richer the farther out**: sell stalls scale by reach (home **2** · west/north **4**
+· east **5**) and buy stalls likewise (home 2 · +1 per reach), and the lower spread far out
+means better pay both ways. The home ivory sink and the ¾ rule together cover the "two
+base sells + a rare slot" shape for the first market.
+
+**Minor nuance left (optional):** the doc's "occasionally *any* rare (a rare gathered at
+sea)" for the home market is implemented specifically as the reliable **ivory** sink rather
+than an occasional generic rare slot — a deliberate simplification; easy to generalise later.
 
 **Naming.** They're generically labelled "Market — <port>". Should use the
 kaupstefna terminology and each market should have a proper name (design.md §9 has
