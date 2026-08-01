@@ -33,11 +33,19 @@ which is odd — a bigger ship takes a bigger crew).
   raise the rare-component find chance (bigger hold = more room for everything),
   so a bigger boat genuinely "holds more rewards".
 
-## 2. 🔴 No way to destroy / scrap a ship
+## 2. ✅ No way to destroy / scrap a ship
 You can only lose a ship at sea; there's no way to deliberately retire one. Either
 add a "break her up" action (probably returns a fraction of her hull), or decide the
 intended design is that you must run a ship to the ground before building a new one
 (and make that legible). **Decision needed:** scrap action vs. run-to-ground-only.
+
+**Done (v0.17.14) — scrap action:** an idle ship (on the sand, not at sea) now has a
+low-profile **"break her up"** button in the fleet card. It returns **40% of her build
+hull, scaled by condition** (`scrapHull = round(build.hull · 0.4 · cond/100)`) — so a
+sound færing gives 8 hull, a knarr 32, a longship 80, less the more worn she is. It's
+irreversible, so it asks twice (first tap arms "sure? — break her up", second within
+~4s does it), mirroring the task-swap / reset confirms. Frees a slot on the strand
+without having to run her to the ground.
 
 ## 3. ✅ "Set the table" copy is stale
 The board text says "one pot for every mouth" — no longer true since the table cost
