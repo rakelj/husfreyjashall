@@ -15,7 +15,7 @@ Sailing the coastal run with a færing vs a knarr shows no difference.
 (`voyMs`, ÷ her speed); the fleet card lists each ship's perks (more hold · quicker ·
 wears slower).
 
-**Balance tail done (v0.17.21):**
+**Balance tail done (v0.17.21)** — values reviewed and kept by Rakel, to be felt in play:
 - **`fit` scales with the ship** — added `fitx` (færing 1.0 · knarr 1.7 · longship 2.6);
   `fitOf(s,p,sh)` multiplies by it. The port row shows the fit as a range across your
   free ships (`cheapest–dearest`) and each ship's affordability gates its own button.
