@@ -198,13 +198,24 @@ Byproducts, rare mats at sea, market offers, and sea charts should all be driven
 a single **luck** stat. Luck comes from amulets; the first (Amber bead) is **18%**,
 probably too high. Design a coherent luck system and rebalance the amulet line.
 
-**Fixed (v0.17.20):** one `luckOf(s)` — the sum of every amulet in the hall, yours and
-the crew's — now drives **all four**: land byproducts (`doCycle` + the flow rate), rare
-things at sea, the market's silver, and sea charts (`rollHaul`). Previously byproducts
-used only the worker's own amulet while the sea used the hall total; now they agree.
-Amulet line rebalanced down: **Amber bead 18% → 10%**, **Thor's hammer 34% → 20%** (+5%
-all kept). The total is surfaced as **"fortune +X%"** on the Crew tab's *You* card so the
-stat is legible.
+**Fixed (v0.17.20), to Rakel's design:**
+
+- **Fortune can never reach 100%.** Each amulet is an independent *charm*, so the hall's
+  luck is the chance at least one favours you — `1 − ∏(1−each)`. It climbs toward 100%
+  but never arrives (the miss-chance is floored just above 0 so floating-point can't
+  round it to 1), so **adding another charm or hand always helps** — no dead ceiling that
+  would block new items or crew later. 1 hammer 20% · 3 → 49% · a full hall of 9 → 87%.
+- **Player-facing explanation, no maths:** "each charm is its own chance at fortune — the
+  more in the hall, the likelier one favours you." The Crew tab's *You* card shows one
+  combined **fortune X%** that always rises when a charm is added.
+- **A hand's own work follows her own charm.** Land byproducts use only that person's
+  amulet (`amuletLuck`), not the hall total. The hall's fortune governs what the *sea*
+  gives up, what a market pays, and charts.
+- **Luck sways each rare thing differently** (`LUCK_SENS`, effective = base·(1+sens·luck)):
+  common finds swing most, the rarest least but never nothing — herbs/bark/clay/horn
+  **2.0**, amber 1.5, whetstone 1.25, ivory 1.0, glass 0.9, **silk 0.8** (kept generous
+  on Rakel's call rather than a token amount).
+- Amulets rebalanced: **Amber bead 18% → 10%**, **Thor's hammer 34% → 20%** (+5% all kept).
 
 ## 12. ✅ Crew tab should show what each hand is working on
 The Crew tab doesn't say what each person (and you) is currently working on. Add it.

@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.22";
-const BUILT="01 Aug 2026 · 18:25 UTC";
+const BUILD="v0.17.23";
+const BUILT="01 Aug 2026 · 21:35 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Processing now keeps pace with gathering as levels climb — a busy kiln eats timber as fast as it makes charcoal — so raw stuff no longer piles up under a high-level crew.";
+const NOTES="Fortune is reworked: each charm in the hall is its own chance, so another always helps and it never quite reaches certainty. It sways common finds most, the rarest least — and what a hand turns up at her own work follows her own charm.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -786,7 +786,16 @@ function eqBonus(eq,skl,kind){
 }
 // one luck stat for the whole hall — every amulet, yours and the crew's, together.
 // It drives byproducts, rare things at sea, the market's pay, and sea charts alike.
-const luckOf=s=>eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+const amuletLuck=eq=>eqBonus(eq,null,"luck");                 // one person's amulet (0, .10 or .20)
+// Fortune: each amulet is its own charm, so the hall's luck is the chance at least one favours
+// you — 1−∏(1−each). It climbs toward 100% but never reaches it, so a new amulet always helps.
+// (the miss-chance is floored just above zero so fortune stays strictly under 100% however
+//  many charms are gathered — there is always a sliver left for a new one to shave off)
+const hallFortune=s=>1-Math.max(1e-9,[s.eq,...s.crew.map(c=>c.eq)].reduce((p,eq)=>p*(1-amuletLuck(eq)),1));
+// how much luck sways each rare thing — a lot for the common ones, little (but not nothing) for
+// the rarest. Effective find ≈ base·(1 + sens·fortune); the rarer the thing, the lower its sens.
+const LUCK_SENS={herbs:2.0,bark:2.0,clay:2.0,horn:2.0,amber:1.5,whetstone:1.25,ivory:1.0,glass:0.9,silk:0.8};
+const luckMult=(k,f)=>1+(LUCK_SENS[k]===undefined?1:LUCK_SENS[k])*f;
 function mkP(i){const p={name:NAMES[i%NAMES.length],xp:{},at:null};for(const k in SK)p.xp[k]=0;return p;}
 function fresh(){
  const xp={},tot={};for(const k in SK)xp[k]=0;[...RES,...COMP].forEach(k=>tot[k]=0);
@@ -839,7 +848,7 @@ function doCycle(s,c){
  s.did=s.did||{}; s.did[c?c.act:s.act]=(s.did[c?c.act:s.act]||0)+1;   // a tally per work, so a task can name one
  for(const k in a.out)give(s,k,a.out[k]*R.yld);
  if(a.rare)for(const k in a.rare){const eq=c?c.eq:s.eq;
-  if(Math.random()<rareChance(a.rare[k],RX.rare()*(1+luckOf(s)))){give(s,k,1);
+  if(Math.random()<rareChance(a.rare[k],RX.rare()*luckMult(k,amuletLuck(eq)))){give(s,k,1);   // a hand's own charm sways their own finds
    log(`${c?c.name:"You"} ${k==="herbs"?"turn up herbs among the grass":"bring"+(c?"s":"")+" up "+CN[k].toLowerCase()+" from the water"}.`,"y");
    if(!c&&k!=="herbs")toast("Rare: "+CN[k]);}}
  const bl=c?cL(c,a.sk):myL(s,a.sk);
@@ -972,7 +981,7 @@ function flows(s){
   const per=60/R.secs;
   for(const k in R.a.out) add(k,R.a.out[k]*R.yld*per,who);
   if(R.a.use)for(const k in R.a.use) add(k,-eUse(R.a,R.yld,k)*per,who);
-  if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*(1+luckOf(s)))*per,who);
+  if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*luckMult(k,amuletLuck(c?c.eq:s.eq)))*per,who);
  };
  one(null,-1); s.crew.forEach((c,i)=>one(c,i));
  const eat=eatRate(s)*60; if(eat>0) add("food",-eat,"the hall eats");
@@ -1503,11 +1512,11 @@ function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
 // the hold is decided when she touches the sand, so you can see it before you unload
 function rollHaul(s,portId,sh){
  const p=portDef(portId), d=shipDef(sh.tier);
- const luck=luckOf(s);
+ const luck=hallFortune(s);
  const sv=Math.round((p.silver[0]+Math.random()*(p.silver[1]-p.silver[0]))*(1+luck*0.5)*RX.silver()*d.cargo);
  const comps={};
  // a bigger hold has more room for rare things to ride home in
- for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*(1+luck)*(0.8+0.2*d.cargo))) comps[k]=(comps[k]||0)+1;
+ for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*luckMult(k,luck)*(0.8+0.2*d.cargo))) comps[k]=(comps[k]||0)+1;
  const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
  let way=null;
  // the finer gear is only ever shown to you, never worked out alone — but rarely
@@ -1852,11 +1861,11 @@ function flowCard(s){
 }
 function view_crew(s){
  let h="";
-  const meR=runner(s,null), luck=luckOf(s);
-  h+=`<div class="card"><h2>You <span class="sub mono" style="color:${luck>0?"var(--gold)":"var(--dim)"}">fortune +${Math.round(luck*100)}%</span></h2>${meR
+  const meR=runner(s,null), luck=hallFortune(s);
+  h+=`<div class="card"><h2>You <span class="sub mono" style="color:${luck>0?"var(--gold)":"var(--dim)"}">fortune ${Math.round(luck*100)}%</span></h2>${meR
     ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.keys(meR.a.use).map(k=>`<span${(s.res[k]||0)>=eUse(meR.a,meR.yld,k)?"":` style="color:var(--rust)"`}>${f(eUse(meR.a,meR.yld,k))} ${k}</span>`).join(", ")}`:""}</div>`
     :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}
-    ${luck>0?`<div class="sub" style="color:var(--dim)">Every amulet in the hall, together — more byproducts, more rare things at sea, richer markets and more charts.</div>`:""}${eqHtml(s.eq,"me")}</div>`;
+    ${luck>0?`<div class="sub" style="color:var(--dim)">Each charm is its own chance at fortune — the more in the hall, the likelier one favours you. It sways what the sea gives up, what a market pays, and the charts that come home. What a hand turns up at her own work follows her own charm.</div>`:""}${eqHtml(s.eq,"me")}</div>`;
   s.crew.forEach((c,i)=>{const r=runner(s,c);
    const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=eUse(r.a,r.yld,k));
    const capped=cL(c,r.a.sk)>=(c.capL||99);
@@ -2060,7 +2069,7 @@ function view_sea(s){
    const unlocked=seaUnlocked(s,sea.id), canReach=fleetReach(s)>=sea.reach;
    const ports=portsBySea(sea.id), openCount=ports.filter(p=>portOpen(s,p.id)).length;
    const complete=seaComplete(s,sea.id);
-   const luck=luckOf(s);
+   const luck=hallFortune(s);
    const m=(1+luck*0.5)*RX.silver();
    let tag="";
    if(!unlocked) tag=` <span class="tag">chart all of ${SEAS[si-1].en.toLowerCase()} first</span>`;
@@ -2094,7 +2103,7 @@ function view_sea(s){
       const cr=short=>short?"var(--rust)":"var(--dim)";
       return `<div class="row"><span>${p.en}
         <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · <span style="color:${cr(lowStores)}">${p.stores} stores</span> · <span style="color:${cr(fits.length&&s.res.silver<cheapest)}">${nfm(cheapest)}${dearest>cheapest?"–"+nfm(dearest):""} to fit</span> · they take ${Math.round(shr*100)}%</div>
-        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div>
+        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*luckMult(k,luck))*100)}%</span>`).join("")}</div>
         ${why.length?`<div class="sub" style="color:var(--rust)">${why.join(" · ")}</div>`:""}</span>
         <span class="give" style="max-width:52%">${btns}</span></div>`;
      }).join("");
