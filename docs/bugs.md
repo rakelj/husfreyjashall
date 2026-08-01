@@ -185,10 +185,18 @@ goes through `dur(loreMins(s,r)*60000)` → "2m 48s". Audited the rest — every
 `loreMins` use already multiplies to ms before display (e.g. `loreMins(s,r)*60000`),
 so this was the only offender.
 
-## 11. 🔴 Unify luck; rebalance amulets
+## 11. ✅ Unify luck; rebalance amulets
 Byproducts, rare mats at sea, market offers, and sea charts should all be driven by
 a single **luck** stat. Luck comes from amulets; the first (Amber bead) is **18%**,
 probably too high. Design a coherent luck system and rebalance the amulet line.
+
+**Fixed (v0.17.20):** one `luckOf(s)` — the sum of every amulet in the hall, yours and
+the crew's — now drives **all four**: land byproducts (`doCycle` + the flow rate), rare
+things at sea, the market's silver, and sea charts (`rollHaul`). Previously byproducts
+used only the worker's own amulet while the sea used the hall total; now they agree.
+Amulet line rebalanced down: **Amber bead 18% → 10%**, **Thor's hammer 34% → 20%** (+5%
+all kept). The total is surfaced as **"fortune +X%"** on the Crew tab's *You* card so the
+stat is legible.
 
 ## 12. ✅ Crew tab should show what each hand is working on
 The Crew tab doesn't say what each person (and you) is currently working on. Add it.

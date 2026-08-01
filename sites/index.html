@@ -256,8 +256,8 @@ const REC=[
  {id:"stick0",en:"Notched stick", slot:"rune",           make:"wood", lv:4, cost:{timber:28},comp:{}, bonus:{xp:.12}, learn:{sk:"wood",lv:6}},
  {id:"tally", en:"Tally stick",   slot:"rune",           make:"wood", lv:8, cost:{timber:110},comp:{glass:1}, bonus:{xp:.26}, pre:"stick0"},
  {id:"kefli", en:"Carved kefli",  slot:"rune",           make:"wood", lv:14,cost:{timber:280},comp:{silk:1},  bonus:{xp:.46}, pre:"tally"},
- {id:"bead",  en:"Amber bead",    slot:"amulet",         make:"weave",lv:5, cost:{},         comp:{amber:2}, bonus:{luck:.18}, learn:{sk:"weave",lv:10}},
- {id:"hammer",en:"Thor's hammer", slot:"amulet",         make:"smith",lv:12,cost:{iron:80},  comp:{silk:1},  bonus:{luck:.34,all:.05}, pre:"bead"}
+ {id:"bead",  en:"Amber bead",    slot:"amulet",         make:"weave",lv:5, cost:{},         comp:{amber:2}, bonus:{luck:.10}, learn:{sk:"weave",lv:10}},
+ {id:"hammer",en:"Thor's hammer", slot:"amulet",         make:"smith",lv:12,cost:{iron:80},  comp:{silk:1},  bonus:{luck:.20,all:.05}, pre:"bead"}
 ];
 /* Lore — the slow parallel track. Runs on its own clock while you work. */
 /* Lore — lines of five tiers rather than one-shot projects. Cost and time climb,
@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.19";
-const BUILT="01 Aug 2026 · 17:58 UTC";
+const BUILD="v0.17.20";
+const BUILT="01 Aug 2026 · 18:15 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Tasks now grow in scope and reward with your skill in the work they ask for, and the season's work pays in silver or raw stuff — never a recipe or a thing from the sea.";
+const NOTES="Luck is now one thing — every amulet in the hall, together — and it turns byproducts, rare things at sea, market pay and charts alike. The amulets were dialled back, and your fortune shows on the Crew tab.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -784,6 +784,9 @@ function eqBonus(eq,skl,kind){
   if(kind==="luck"&&r.bonus.luck)v+=r.bonus.luck;}
  return v;
 }
+// one luck stat for the whole hall — every amulet, yours and the crew's, together.
+// It drives byproducts, rare things at sea, the market's pay, and sea charts alike.
+const luckOf=s=>eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
 function mkP(i){const p={name:NAMES[i%NAMES.length],xp:{},at:null};for(const k in SK)p.xp[k]=0;return p;}
 function fresh(){
  const xp={},tot={};for(const k in SK)xp[k]=0;[...RES,...COMP].forEach(k=>tot[k]=0);
@@ -829,7 +832,7 @@ function doCycle(s,c){
  s.did=s.did||{}; s.did[c?c.act:s.act]=(s.did[c?c.act:s.act]||0)+1;   // a tally per work, so a task can name one
  for(const k in a.out)give(s,k,a.out[k]*R.yld);
  if(a.rare)for(const k in a.rare){const eq=c?c.eq:s.eq;
-  if(Math.random()<rareChance(a.rare[k],RX.rare()*(1+eqBonus(eq,null,"luck")))){give(s,k,1);
+  if(Math.random()<rareChance(a.rare[k],RX.rare()*(1+luckOf(s)))){give(s,k,1);
    log(`${c?c.name:"You"} ${k==="herbs"?"turn up herbs among the grass":"bring"+(c?"s":"")+" up "+CN[k].toLowerCase()+" from the water"}.`,"y");
    if(!c&&k!=="herbs")toast("Rare: "+CN[k]);}}
  const bl=c?cL(c,a.sk):myL(s,a.sk);
@@ -962,7 +965,7 @@ function flows(s){
   const per=60/R.secs;
   for(const k in R.a.out) add(k,R.a.out[k]*R.yld*per,who);
   if(R.a.use)for(const k in R.a.use) add(k,-R.a.use[k]*(k==="ore"?RX.ore():1)*per,who);
-  if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*(1+eqBonus(c?c.eq:s.eq,null,"luck")))*per,who);
+  if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*(1+luckOf(s)))*per,who);
  };
  one(null,-1); s.crew.forEach((c,i)=>one(c,i));
  const eat=eatRate(s)*60; if(eat>0) add("food",-eat,"the hall eats");
@@ -1492,7 +1495,7 @@ function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
 // the hold is decided when she touches the sand, so you can see it before you unload
 function rollHaul(s,portId,sh){
  const p=portDef(portId), d=shipDef(sh.tier);
- const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+ const luck=luckOf(s);
  const sv=Math.round((p.silver[0]+Math.random()*(p.silver[1]-p.silver[0]))*(1+luck*0.5)*RX.silver()*d.cargo);
  const comps={};
  for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*(1+luck))) comps[k]=(comps[k]||0)+1;
@@ -1839,10 +1842,11 @@ function flowCard(s){
 }
 function view_crew(s){
  let h="";
-  const meR=runner(s,null);
-  h+=`<div class="card"><h2>You</h2>${meR
+  const meR=runner(s,null), luck=luckOf(s);
+  h+=`<div class="card"><h2>You <span class="sub mono" style="color:${luck>0?"var(--gold)":"var(--dim)"}">fortune +${Math.round(luck*100)}%</span></h2>${meR
     ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.entries(meR.a.use).map(([k,v])=>`<span${(s.res[k]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${k}</span>`).join(", ")}`:""}</div>`
-    :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}${eqHtml(s.eq,"me")}</div>`;
+    :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}
+    ${luck>0?`<div class="sub" style="color:var(--dim)">Every amulet in the hall, together — more byproducts, more rare things at sea, richer markets and more charts.</div>`:""}${eqHtml(s.eq,"me")}</div>`;
   s.crew.forEach((c,i)=>{const r=runner(s,c);
    const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]);
    const capped=cL(c,r.a.sk)>=(c.capL||99);
@@ -2046,7 +2050,7 @@ function view_sea(s){
    const unlocked=seaUnlocked(s,sea.id), canReach=fleetReach(s)>=sea.reach;
    const ports=portsBySea(sea.id), openCount=ports.filter(p=>portOpen(s,p.id)).length;
    const complete=seaComplete(s,sea.id);
-   const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+   const luck=luckOf(s);
    const m=(1+luck*0.5)*RX.silver();
    let tag="";
    if(!unlocked) tag=` <span class="tag">chart all of ${SEAS[si-1].en.toLowerCase()} first</span>`;
