@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.16";
-const BUILT="01 Aug 2026 · 17:22 UTC";
+const BUILD="v0.17.17";
+const BUILT="01 Aug 2026 · 17:31 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="The home kaupstefna will now take a batch of walrus ivory off your hands for a modest price — a sink for what the northern water piles up.";
+const NOTES="Landing again where a kaupstefna is still open now adds fresh stalls and more time to trade, instead of clearing what was there.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1618,10 +1618,15 @@ function marketOffers(s,p){
  return offers;
 }
 function openMarket(s,portId){ const p=portDef(portId); if(!p)return;
- const left=marketMins(p)*60000, offers=marketOffers(s,p);
+ const add=marketMins(p)*60000, offers=marketOffers(s,p);
  const ex=s.markets.find(m=>m.port===portId);
- if(ex){ ex.left=left; ex.offers=offers; } else s.markets.push({port:portId,left,offers});
- log(`The kaupstefna at ${p.en} is open — ${marketMins(p)} minutes to trade.`,"y"); toast("A kaupstefna is open: "+p.en);
+ if(ex){ // landing again while it is still open adds to the time and to the stalls, never wipes what is there
+  ex.left+=add; ex.offers=ex.offers.concat(offers);
+  log(`Fresh stalls at the kaupstefna at ${p.en}, and longer to trade.`,"y"); toast("The kaupstefna grows: "+p.en);
+ } else {
+  s.markets.push({port:portId,left:add,offers});
+  log(`The kaupstefna at ${p.en} is open — ${marketMins(p)} minutes to trade.`,"y"); toast("A kaupstefna is open: "+p.en);
+ }
 }
 function doTrade(mi,oi){const s=S,mk=s.markets[mi]; if(!mk)return; const o=mk.offers[oi]; if(!o)return;
  const where=portDef(mk.port).en;

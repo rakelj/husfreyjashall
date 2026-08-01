@@ -122,8 +122,15 @@ port, `reach 0`) now carries a **bulk ivory sell offer** whenever you hold ≥3 
 your stock up to **15**, at a **modest 50 silver each** (vs ~70 for singles), so you can
 dump a batch for a fair price. Fresh offer each time a home market opens.
 
-Still open on #8: refresh-behaviour rule (below), the base-material "¾ of stock" sizing,
-and the "richer / more variety the farther out" markets.
+**Refresh rule done (v0.17.17), per Rakel's call — "add, don't wipe":** landing at a port
+whose kaupstefna is still open now **adds to the timer** (`ex.left += marketMins`) and
+**appends the fresh offers** (`ex.offers = ex.offers.concat(...)`) instead of resetting the
+timer and regenerating. Different ports still open their own separate markets. (Note:
+repeated landings grow both without bound — fine for hand play; revisit if an auto-tiller
+fleet makes a home market effectively permanent.)
+
+Still open on #8: the base-material "¾ of stock" sell sizing, and the "richer / more
+variety the farther out" markets.
 
 **Naming.** They're generically labelled "Market — <port>". Should use the
 kaupstefna terminology and each market should have a proper name (design.md §9 has
