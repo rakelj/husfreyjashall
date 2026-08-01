@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.17";
-const BUILT="01 Aug 2026 · 17:31 UTC";
+const BUILD="v0.17.18";
+const BUILT="01 Aug 2026 · 17:44 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Landing again where a kaupstefna is still open now adds fresh stalls and more time to trade, instead of clearing what was there.";
+const NOTES="Kaupstefna stalls now offer to take about three-quarters of a surplus off your hands, and the farther waters hold richer markets — more stalls and better pay.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1599,19 +1599,27 @@ function buildShip(tier){const s=S; const d=shipDef(tier); if(!d)return;
 const marketMins=p=>Math.round(4+p.mins*1.5);                 // ~6 min at the coast, ~22 at Miklagarðr
 const marketWealth=p=>1+seaDef(p.sea).reach*0.8+portsBySea(p.sea).indexOf(p)*0.3;   // ~1 (coast) .. ~3.5 (Miklagarðr)
 function marketOffers(s,p){
- const wealth=marketWealth(p), spread=Math.max(0.12,0.30-0.05*seaDef(p.sea).reach);
- const cap=capOf(s), sellable=RES.filter(k=>k!=="silver"&&WORTH[k]);
+ const reach=seaDef(p.sea).reach;
+ const wealth=marketWealth(p), spread=Math.max(0.12,0.30-0.05*reach);   // farther out pays better both ways
  const pick=a=>a[Math.floor(Math.random()*a.length)];
- const used={}, offers=[];
- for(let n=0;n<3;n++){ let k,g=0; do{k=pick(sellable);}while(used[k]&&g++<12); used[k]=1;
-  const qty=Math.max(5,Math.round((cap[k]||120)*(0.15+Math.random()*0.2)*wealth));
-  offers.push({kind:"sell",res:k,qty,silver:Math.max(1,Math.round(WORTH[k]*qty*(1-spread-Math.random()*0.08)))}); }
- for(let n=0;n<2;n++){ const k=pick(MARKET_BUYABLE);
+ const offers=[], used={};
+ // sell offers take about ¾ of what your stores hold of a material, priced to that
+ // amount — a sink for your surplus. Richer the farther out: more stalls, better pay.
+ const nSell=reach===0?2:3+reach;                                       // home 2 · west/north 4 · east 5
+ const held=RES.filter(k=>k!=="silver"&&WORTH[k]&&(s.res[k]||0)>=6);
+ for(let n=0;n<nSell;n++){
+  const poolK=held.filter(k=>!used[k]); if(!poolK.length)break;
+  const k=pick(poolK); used[k]=1;
+  const qty=Math.min(Math.floor(s.res[k]),Math.max(5,Math.floor((s.res[k]||0)*0.75)));
+  offers.push({kind:"sell",res:k,qty,silver:Math.max(1,Math.round(WORTH[k]*qty*(1-spread-Math.random()*0.08)))});
+ }
+ // buys — more variety the farther out too
+ const nBuy=reach===0?2:2+reach;
+ for(let n=0;n<nBuy;n++){ const k=pick(MARKET_BUYABLE);
   const qty=Math.max(5,Math.round(20*wealth*(0.6+Math.random()*0.9)));
   offers.push({kind:"buy",res:k,qty,silver:Math.round(WORTH[k]*qty*(1+spread+Math.random()*0.08))}); }
- // a standing sink for walrus ivory at the home kaupstefna — it piles up from the
- // northern water and the singles sell slowly, so dump a batch here for a modest price
- if(seaDef(p.sea).reach===0 && (s.res.ivory||0)>=3){
+ // the home kaupstefna also takes a batch of walrus ivory off your hands (a modest sink)
+ if(reach===0 && (s.res.ivory||0)>=3){
   const qty=Math.min(Math.floor(s.res.ivory),15);
   offers.push({kind:"sell",res:"ivory",qty,silver:Math.round(RARE_WORTH.ivory*0.5*qty)});
  }
