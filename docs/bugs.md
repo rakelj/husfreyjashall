@@ -55,11 +55,17 @@ more than one). Wording-only fix in `view_work`'s board card.
 **Fixed:** copy now reads "more for a full hall and stronger hands", matching the
 appetite-scaled `tableCost`.
 
-## 4. 🔴 Crew hiring cost curve is too steep
+## 4. ✅ Crew hiring cost curve is too steep
 Hiring gets expensive too fast. Balance pass on the offer/replace cost
 (`replaceCost` / `seek` / offer pricing).
 
-## 5. 🔴 "Put word out for a craft" is broken / gameable
+**Fixed (v0.17.15):** the dominant "too fast" term was the per-crew multiplier —
+each hand you already kept raised every new ask by **+75%**, so a 5th hire cost ~4×
+base and an 8th ~6.25×. Softened to **+40%** (5th ≈ 2.6×, 8th ≈ 3.8×). Pulled the
+formula into a shared `hireCost(s,L)` so the gate offer and the `replaceCost` display
+can't drift apart. Per-level pricing (`13·L^1.6`) left as-is — that rise is intended.
+
+## 5. ✅ "Put word out for a craft" is broken / gameable
 Currently biases the gate offers toward a craft but the three offers aren't all that
 craft, and the top-tier (expensive) one shows up and is unaffordable, so the feature
 is effectively mute. It's exploitable: put the word out for a craft you *don't* want,
@@ -69,6 +75,15 @@ to raise the odds of a mid-tier one you *do* want appearing.
 - Putting the word out should **cost silver** and have a **cooldown**.
 - All **three** offers that come should be of that profession.
 - The **cost and cooldown increase every time** you use it.
+
+**Fixed (v0.17.15):** reworked exactly to the requested design. The old free `s.want`
+toggle (which only biased the dear slot — the gameable part) is gone. Tapping a craft
+now calls `putWord(k)`: it **costs silver** (`wantCost = 55·1.9^wantN` → 55, 105, 198,
+377 …), re-rolls the gate so **all three places are that trade** at the three price
+bands (`rollOffers(forceK)`), and starts a **cooldown** (`wantCd = 120 + 90·wantN` s →
+2m, 3.5m, 5m …) during which the buttons are disabled and show "settles in Xm". Both
+climb every use; they reset only on a reckoning. `wantN`/`wantT` added to state and
+the tick counts the cooldown down (even while away).
 
 ## 6. ✅ Missing inputs for a work aren't clearly color-coded
 On the Work tab, a work you can't currently run for lack of inputs should be
@@ -222,10 +237,17 @@ the meals/pots being consumed aren't shown. Add meals to the flow.
 credited to "the standing board" — whenever the board is set to fill itself, so the
 meal drain shows in "What is moving" like food and wages.
 
-## 20. 🔴 Crew wages feel very high (esp. idle/sleeping)
+## 20. ✅ Crew wages feel very high (esp. idle/sleeping)
 You lose a lot of silver while hands sleep/idle. Balance pass on `WAGE_CYCLE` / when
 wages are charged. (Note: we decided food-foraging ignores wages, but this is the
 broader wage economy.)
+
+**Fixed (v0.17.15):** balance pass on the wage. `WAGE_CYCLE` cut **0.044 → 0.030**
+(~32% lower) and the per-age ramp softened **0.25 → 0.15**, so late-age halls aren't
+punished as hard. (On "when charged": wages are already only taken on a *completed
+work cycle* — resting / away / roofless / input-starved hands aren't charged at all;
+verified in `doCycle` and the tick loop.) Numbers are easy to tune further if it still
+feels steep in play.
 
 ## 21. ✅ Way on: "Sail the east way" step should cover all waters
 Step ~34 "Sail the east way" no longer fits now that waters unlock in sequence —

@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.14";
-const BUILT="01 Aug 2026 · 11:07 UTC";
+const BUILD="v0.17.15";
+const BUILT="01 Aug 2026 · 16:39 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="You can now break up a ship on the sand for part of her hull back, freeing a place on the strand without having to run her to the ground.";
+const NOTES="Crew cost eased: hiring rises more gently as the hall fills and wages are lower; and putting word out for a craft now costs silver to bring all three of that trade — dearer and slower each time.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -595,8 +595,8 @@ function eatRate(s){
    empty she does not work unpaid — she stops until there is silver again. */
 // flat to the cycle: a quick hand does more work and so earns more by the hour,
 // but the wage does not climb twice over
-const WAGE_CYCLE=0.044;
-const wageFor=(s,c)=>WAGE_CYCLE*(1+0.25*(s.age||0));
+const WAGE_CYCLE=0.030;
+const wageFor=(s,c)=>WAGE_CYCLE*(1+0.15*(s.age||0));
 function wageRate(s){   // per second, for the flow panel only
  let r=0;
  s.crew.forEach((c,i)=>{ if(!working(s,i))return;
@@ -786,7 +786,7 @@ function fresh(){
   crew:[],hall:1,unlocked:["woods","hew"],known:[],items:{},
   intro:0,q:{er:[],dy:[],se:[],ch:[]},qt:{er:0,dy:0,se:0},life:{},lev:{},
   offers:[],offerT:0,fleet:[],trips:[],opened:{},sailed:[],markets:[],log:[],used:[],lore:{},studies:[],
-  got:[],marks:{},mseen:{},seekN:0,seen:0,flow:null,unpaid:false,starved:false,pick:null,shut:{},want:null,auto:{tiller:1,caulk:1,board:1,hand:1},craftSeen:[],goal:null,kept:0,feastBoost:0,iseen:0,chDone:[],table:0,tableMax:0,tableLift:0,tkn:{er:0,dy:0,se:0},
+  got:[],marks:{},mseen:{},seekN:0,wantN:0,wantT:0,seen:0,flow:null,unpaid:false,starved:false,pick:null,shut:{},want:null,auto:{tiller:1,caulk:1,board:1,hand:1},craftSeen:[],goal:null,kept:0,feastBoost:0,iseen:0,chDone:[],table:0,tableMax:0,tableLift:0,tkn:{er:0,dy:0,se:0},
   ev:{hires:0,crafts:0,voyages:0,sells:0,mends:0,levels:0,lores:0,tables:0}, did:{},
   age:0,picking:false,picks:[],orl:{},orlog:0};
 }
@@ -877,6 +877,7 @@ function advance(dt){
  }
  // recruit offers refresh
  s.offerT-=dt;if(s.offerT<=0||s.offers.length===0)rollOffers();
+ if(s.wantT>0)s.wantT=Math.max(0,s.wantT-dt);   // the word settles; then you may put it out again
  for(let mi=s.markets.length-1;mi>=0;mi--){ s.markets[mi].left-=dt;
   if(s.markets[mi].left<=0){ log(`The kaupstefna at ${portDef(s.markets[mi].port).en} has closed.`,"b"); s.markets.splice(mi,1); } }
  // quests
@@ -1209,31 +1210,34 @@ function study(id){const s=S,r=RSCH.find(x=>x.id===id);if(!r)return;
  const ms=loreMins(s,r)*60000;
  s.studies.push({id,left:ms,tot:ms});
  log(`You set to reading ${r.en.toLowerCase()} ${ROM[LT(s,r.id)]}.`,"b");maybeDraw();}
-function rollOffers(){
+// what a hand of level L asks at the gate. Each hand you already keep raises the ask,
+// but gently (0.4) — the old 0.75 made the fourth or fifth hire absurdly dear.
+const hireCost=(s,L)=>Math.round((16+13*Math.pow(L,1.6))*(1+s.crew.length*0.4)*RX.hire()*(1-0.15*TIER(s,"gate")));
+function rollOffers(forceK){
  const s=S; s.offerT=Math.round(240000/(1+0.25*LT(s,"guest"))); s.seekN=0;
  const open=Object.keys(SK).filter(k=>s.unlocked.some(u=>ACT[u].sk===k));
  if(!s.crew.length&&!(s.used||[]).length){
   s.offers=[{name:"Ásta",sk:"forage",L:2,capL:7,cost:25}];return;}
  const taken=[],used=[];
  const boost=s.feastBoost||0; s.feastBoost=0;
- // one cheap, one middling, one dear — never two of a craft, so never more
- // offers than there are crafts you could actually use
- const bands=[0,1,2].slice(0,Math.max(1,Math.min(3,open.length)));
+ // one cheap, one middling, one dear — never two of a craft, so never more offers than
+ // there are crafts you could use. But word put out for a craft (forceK) makes all three
+ // that trade, at the three price bands.
+ const forced=forceK&&open.includes(forceK);
+ const bands=forced?[0,1,2]:[0,1,2].slice(0,Math.max(1,Math.min(3,open.length)));
  s.offers=bands.map(band=>{
-  let pool=open.filter(k=>!used.includes(k));
-  // word put out for a particular craft fills the dearest place first
-  if(band===bands.length-1&&s.want&&pool.includes(s.want)) pool=[s.want];
-  else if(band===bands.length-1&&bands.length>1){const m=pool.filter(k=>MAKERS.includes(k)); if(m.length&&Math.random()<0.75)pool=m;}
+  let pool=forced?[forceK]:open.filter(k=>!used.includes(k));
+  // the dear place leans toward a maker, when the word has not been put out
+  if(!forced&&band===bands.length-1&&bands.length>1){const m=pool.filter(k=>MAKERS.includes(k)); if(m.length&&Math.random()<0.75)pool=m;}
   if(!pool.length)return null;
-  const k=pool[Math.floor(Math.random()*pool.length)]; used.push(k);
+  const k=pool[Math.floor(Math.random()*pool.length)]; if(!forced)used.push(k);
   const held=s.crew.filter(c=>c.sk===k).reduce((m,c)=>Math.max(m,c.capL||0),0);
   const mine=myL(s,k);
   const floor=[0.35,0.7,1.1][band];
   let L=Math.max(1,Math.round(mine*floor))+band+boost;
   while(Math.min(MAX_LEVEL,Math.round(L*2.5)+2)<=held&&L<40) L++;                 // never worse than who you have
   const nm=freeName(s,taken); taken.push(nm);
-  return{name:nm,sk:k,L,capL:Math.min(MAX_LEVEL,Math.round(L*2.5)+2),
-   cost:Math.round((16+13*Math.pow(L,1.6))*(1+s.crew.length*0.75)*RX.hire()*(1-0.15*TIER(s,"gate")))};
+  return{name:nm,sk:k,L,capL:Math.min(MAX_LEVEL,Math.round(L*2.5)+2),cost:hireCost(s,L)};
  }).filter(Boolean);
 }
 const seekCost=s=>Math.round(40*Math.pow(2.2,s.seekN||0));
@@ -1241,6 +1245,18 @@ function seek(){const s=S;const c=seekCost(s);
  if(s.res.silver<c){toast(`${c} silver to send word`);return;}
  s.res.silver-=c; const n=(s.seekN||0)+1; rollOffers(); s.seekN=n;
  log("Word goes out along the shore. The next asking will cost more.","b");maybeDraw();}
+// putting word out for a craft: costs silver, fills all three places at the gate with
+// that trade, and cannot be done again until the word settles. Both climb each time.
+const wantCost=s=>Math.round(55*Math.pow(1.9,s.wantN||0));
+const wantCd=s=>Math.round((120+90*(s.wantN||0))*1000);
+function putWord(k){const s=S;
+ if(!Object.keys(SK).some(x=>x===k&&s.unlocked.some(u=>ACT[u].sk===k)))return;
+ if((s.wantT||0)>0){toast("Word is already out — wait for it to settle");return;}
+ const c=wantCost(s);
+ if(s.res.silver<c){toast(`${c} silver to put the word out`);return;}
+ s.res.silver-=c; rollOffers(k); s.wantN=(s.wantN||0)+1; s.wantT=wantCd(s);
+ log(`Word is put out for a ${SK[k].toLowerCase()} hand — three come to the gate. The next word will cost more, and take longer.`,"b");
+ toast(`Word out: ${SK[k]}`); maybeDraw();}
 function hire(i){const s=S,o=s.offers[i];if(!o)return;
  if(s.crew.length>=HALL[s.hall].crew){toast("The hall has no room");return;}
  if(s.res.silver<o.cost){toast("Not enough silver");return;}
@@ -1259,7 +1275,7 @@ function replaceCost(s,o){
   const keepFrac=[0.5,0.65,0.80,0.95][TIER(s,"through")];
   const arrives=Math.max(1,Math.round(L*keepFrac));
   // priced exactly as the gate prices it, so the two numbers describe the same person
-  const askFor=L=>Math.round((16+13*Math.pow(L,1.6))*(1+s.crew.length*0.75)*RX.hire()*(1-0.15*TIER(s,"gate")));
+  const askFor=L=>hireCost(s,L);
   const gateL=Math.max(1,Math.round(myL(s,c.sk)*1.1))+2;         // the dear slot, at your standing
   const gateCap=Math.round(gateL*2.5)+2;
   const sameL=Math.max(1,Math.round((cap-2)/2.5));               // what one of her standing would cost
@@ -1842,10 +1858,12 @@ function view_crew(s){
     <div class="sub" style="color:var(--dim)">will reach ${SK[o.sk]} ${o.capL} and no further · teaches you to the same</div></span>
     <button data-hire="${i}" ${s.res.silver>=o.cost&&s.crew.length<HALL[s.hall].crew?"":"disabled"} style="${s.res.silver>=o.cost?"":"color:var(--rust);border-color:var(--rust)"}">${o.cost} silver</button></div>`).join("")+
    `<div class="note" style="margin-top:6px">New folk pass by in <span id="ocd">${dur(s.offerT)}</span>. They come better as you do.</div>
-    <div class="sub" style="margin-top:7px">Put word out for a particular craft — the dearest place at the gate will be one:</div>
+    <div class="sub" style="margin-top:7px">Put word out for a craft — all three places at the gate come that trade. ${
+      s.wantT>0?`<span style="color:var(--rust)">the word is out · settles in <span id="wcd">${dur(s.wantT)}</span></span>`
+        :`<span style="color:var(--gold)">${wantCost(s)} silver</span>, and dearer each time`}</div>
     <div class="give" style="max-width:100%;justify-content:flex-start;margin-top:5px">${
       Object.keys(SK).filter(k=>s.unlocked.some(u=>ACT[u].sk===k)).map(k=>
-       `<button data-want="${k}" style="${s.want===k?"border-color:var(--gold);color:var(--gold)":"opacity:.55"}">${SK[k]}</button>`).join("")}</div>
+       `<button data-word="${k}" ${s.wantT>0||s.res.silver<wantCost(s)?"disabled":""} style="opacity:${s.wantT>0?".35":".7"}">${SK[k]}</button>`).join("")}</div>
     <div class="opt" style="margin-top:7px"><span>Hold a feast <span class="c">${feastCost(s)} pots · draws far better folk at once</span></span>
      <button data-feast="1" ${s.res.meals>=feastCost(s)?"":"disabled"}>hold it</button></div>
     <button data-seek="1" style="margin-top:7px;width:100%" ${s.res.silver>=seekCost(s)?"":"disabled"}>send word along the shore — ${seekCost(s)} silver</button></div>`;
@@ -2301,7 +2319,7 @@ function paint(){
    W("pb",stall?0:pct(s.prog,R.secs*1000)); W("px",xpBar(s.xp[R.a.sk]));}
   Object.keys(SK).forEach(k=>W("sx_"+k,xpBar(s.xp[k])));
  }
- if(tab==="crew"){ TX("ocd",dur(s.offerT));
+ if(tab==="crew"){ TX("ocd",dur(s.offerT)); if(s.wantT>0)TX("wcd",dur(s.wantT));
   s.crew.forEach((c,i)=>{const r=runner(s,c);if(!r)return;
    W("cb"+i,c.away?0:pct(c.prog,r.secs*1000)); W("cx"+i,xpBar(c.xp[r.a.sk]||0));}); }
  if(tab==="sea"){
@@ -2362,7 +2380,7 @@ function stateSig(){const s=S;
   REC.map(r=>{const okl=myL(s,r.make)>=r.lv,c1=Object.entries(r.cost).every(([k,v])=>s.res[k]>=v),
    c2=Object.entries(r.comp).every(([k,v])=>(s.res[k]||0)>=v);return okl&&c1&&c2?1:0;}).join(""),
   PORTS.map(p=>s.res.stores>=p.stores?1:0).join(""),
-  s.away?"A":"-", s.seen?"":"I", rstArmed?"R":"-", s.want||"-", JSON.stringify(s.auto||{}), s.act||"-", s.goal||"-", (s.craftSeen||[]).join(""), Math.floor((Date.now()-(s.kept||0))/60000), atTable(s)?Math.ceil(s.table/30000):0, Math.floor(s.res.silver/5), s.res.hull>=20?1:0, speed, s.trips.some(t=>t.home)?"H":"-",
+  s.away?"A":"-", s.seen?"":"I", rstArmed?"R":"-", (s.wantT>0?"W":"-")+(s.wantN||0), JSON.stringify(s.auto||{}), s.act||"-", s.goal||"-", (s.craftSeen||[]).join(""), Math.floor((Date.now()-(s.kept||0))/60000), atTable(s)?Math.ceil(s.table/30000):0, Math.floor(s.res.silver/5), s.res.hull>=20?1:0, speed, s.trips.some(t=>t.home)?"H":"-",
   JSON.stringify(s.lore), (s.studies||[]).map(x=>x.id+(x.ready?"!":"")).join(","), MARK.map(m=>markTier(s,m)+(markReady(s,m)?"!":"")).join(""), COMP.map(k=>s.res[k]||0).join(",")
  ].join("|");}
 let lastSig="";
@@ -2448,9 +2466,7 @@ function fire(t){
  else if(d.sect){ S.shut=S.shut||{};
    const nowShut=/▸/.test(t.closest("[data-sect]").innerHTML);
    S.shut[d.sect]=!nowShut; lastSig=""; maybeDraw(); }
- else if(d.want){ S.want=S.want===d.want?null:d.want;
-   log(S.want?`Word is put out for a ${SK[S.want].toLowerCase()} hand.`:"Word is called back.","b");
-   lastSig=""; maybeDraw(); }
+ else if(d.word) putWord(d.word);
  else if(d.study)study(d.study);
  else if(d.lore!==undefined)takeLore(+d.lore);
  else if(d.coll){const[b,i,c]=d.coll.split("|");collect(b,+i,+(c||0));}
