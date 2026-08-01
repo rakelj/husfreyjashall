@@ -225,9 +225,16 @@ rare changes the signature and forces a redraw; the rare rows are built from
 a repeat tap during the ~1.2s touch-freeze window just shows "You have none to sell".
 No code change needed beyond the earlier stateSig fix.
 
-## 15. 🔴 Season's work rewards: no recipes or sea mats
+## 15. ✅ Season's work rewards: no recipes or sea mats
 The season's-work band should not reward recipes or materials that come from the sea.
 Reward should be a choice between **silver / a raw material / a rare raw material**.
+
+**Fixed (v0.17.19):** `seasonChoices` rewritten. It no longer offers a **way of making**
+(recipe) or a **sea rare** (COMP). The three choices are now **silver**, **a raw material**
+(`RAW_COMMON` = timber / ore / wool) and **a rarer raw material** (`RAW_RARE` = herbs /
+bark / clay / horn) — all land-gathered, so the sea rares stay the sea's alone. New
+choice kind `res` handled in `choiceLabel` and `collect` (legacy `way`/`comp` branches
+kept so a season task already in flight on an old save still pays out).
 
 ## 16. ✅ Surface the skill level cap (for Elder counsel)
 Elder counsel is opaque without knowing the current level cap. Show the `softCap` in
@@ -296,9 +303,17 @@ Burning charcoal (kiln) at level 19 consumes **less** timber than a level-16 cre
 brings in felling old timber. The intended ~1.5–1.8 processor:gatherer ratio doesn't
 hold as levels diverge. Rework how processing input rates scale with level.
 
-## 24. 🔴 Tasks should scale scope + reward with skill level
+## 24. ✅ Tasks should scale scope + reward with skill level
 Errands (and the other task bands) should scale their quantities and rewards by the
 player's skill level, instead of fixed amounts.
+
+**Fixed (v0.17.19):** `qScale` now takes the task's track and folds in **skill level**, not
+just age: `(1 + 0.5·age) · (1 + 0.045·(L−1))`, where **L** is your level in the craft that
+*makes* what the task asks for (via a `PROD_SK` resource→craft map), or your best skill for
+deeds / season rewards. It drives the task **quantity** and every band's **reward** —
+errand goods (`errandPay(s, mult)`) and silver, the day's silver, and the season choice
+amounts. At age 0 / level 1 it's ×1 (unchanged), so early play is untouched; a task in a
+craft you're skilled at now grows in scope and pay to match.
 
 ## 25. ✅ Fully tap-free updates (service worker) + offline play
 v0.17.4 added an on-launch update check that fetches the live `BUILD` and offers a
