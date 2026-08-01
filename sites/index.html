@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.13";
-const BUILT="31 Jul 2026 · 20:13 UTC";
+const BUILD="v0.17.14";
+const BUILT="01 Aug 2026 · 11:07 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="The app now updates itself: a service worker fetches the freshest build every launch, so a home-screen hall keeps current with no tapping (and plays offline). This is the last re-add.";
+const NOTES="You can now break up a ship on the sand for part of her hull back, freeing a place on the strand without having to run her to the ground.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1491,6 +1491,23 @@ function haulText(h){
 function loseShip(s,fi){ s.fleet.splice(fi,1);
  // trips index into the fleet, so drop the lost ship's trip and shift the rest down
  s.trips=(s.trips||[]).filter(t=>t.ship!==fi).map(t=>t.ship>fi?{...t,ship:t.ship-1}:t); }
+// breaking a ship up on the sand gives back part of her hull — less the more worn she is
+const scrapHull=sh=>Math.round((shipDef(sh.tier).build.hull||0)*0.4*(sh.cond/100));
+let scrapArm=null,scrapT=null;   // which ship's break-up is armed — it can't be undone, so it asks twice
+function scrapShip(fi){ const s=S,sh=s.fleet[fi]; if(!sh)return;
+ if(tripOf(s,fi)){toast("She is at sea — she must be on the sand first");return;}
+ const d=shipDef(sh.tier), back=scrapHull(sh);
+ if(scrapArm!==fi){                                   // first tap — arm it, nothing broken yet
+  scrapArm=fi; clearTimeout(scrapT);
+  scrapT=setTimeout(()=>{scrapArm=null;lastSig="";maybeDraw();},4000);
+  toast(back>0?`Tap again to break her up · +${back} hull`:"Tap again to break her up"); lastSig=""; maybeDraw(); return;
+ }
+ clearTimeout(scrapT); scrapArm=null;
+ loseShip(s,fi);
+ if(back>0){ give(s,"hull",back); log(`The ${d.en.toLowerCase()} is broken up on the sand — ${back} hull back to the pile.`,"b"); toast(`+${back} hull`); }
+ else { log(`The ${d.en.toLowerCase()} is broken up on the sand.`,"b"); toast("Broken up"); }
+ lastSig=""; maybeDraw();
+}
 // a hand on the tiller mends her from the hall's stores and puts her out again on her last water
 function autoTend(s,fi){ const sh=s.fleet[fi]; if(!sh||!sh.last)return; const p=portDef(sh.last); if(!p)return;
  let guard=0; while(TIER(s,"caulk")&&autoOn(s,"caulk")&&sh.cond<p.wear+10&&guard++<20){ if(!mendShip(s,fi,true))break; }
@@ -1954,7 +1971,8 @@ function view_sea(s){
     } else { const want=Math.min(8,Math.ceil((100-sh.cond)/5));
      body=`<div class="bar sm"><i id="cnd${i}" style="width:${sh.cond}%;background:${sh.cond<35?"var(--rust)":"var(--patina)"}"></i></div>
       <div class="sub" style="margin-top:5px">${sh.cond>=99?"Sound and tarred, on the sand.":`Mending wants ${want} hull — you have ${f(s.res.hull)}.`}</div>`+
-      (sh.cond<99?`<button data-mend="${i}" style="margin-top:6px;width:100%" ${s.res.hull>=want?"":"disabled"}>mend her</button>`:"");
+      (sh.cond<99?`<button data-mend="${i}" style="margin-top:6px;width:100%" ${s.res.hull>=want?"":"disabled"}>mend her</button>`:"")+
+      `<button data-scrap="${i}" style="margin-top:5px;width:100%;background:transparent;box-shadow:none;min-height:36px;font-size:11px;border:0;border-top:1px dashed ${scrapArm===i?"var(--rust)":"var(--edge)"};color:${scrapArm===i?"var(--rust)":"var(--dim)"}">${scrapArm===i?"sure? — break her up":"break her up"}${scrapHull(sh)>0?` · +${scrapHull(sh)} hull`:""}</button>`;
     }
     const perks=[d.cargo>1?`${Math.round((d.cargo-1)*100)}% more in the hold`:"",d.speed>1?`${Math.round((d.speed-1)*100)}% quicker`:"",d.wear<1?`wears ${Math.round((1-d.wear)*100)}% slower`:""].filter(Boolean).join(" · ");
     return `<div style="margin:9px 0 2px;border-top:1px solid var(--edge);padding-top:8px">
@@ -2340,7 +2358,7 @@ function stateSig(){const s=S;
   Object.keys(SK).map(k=>myL(s,k)).join(".")+"/"+softCap(s),
   s.offers.map(o=>o.name+o.cost).join(","),
   ["er","dy","se","ch"].map(b=>s.q[b].map(q=>q.t+(q.done?1:0)).join("")).join("|"), s.intro+(introReady(s)?"!":""),
-  Object.keys(s.ready||{}).join(","), fireArmed||"-", swapArm||"-", s.picking?"P"+s.picks.join(""):"-", s.age, s.orlog, JSON.stringify(s.orl||{}),
+  Object.keys(s.ready||{}).join(","), fireArmed||"-", swapArm||"-", scrapArm===null?"-":scrapArm, s.picking?"P"+s.picks.join(""):"-", s.age, s.orlog, JSON.stringify(s.orl||{}),
   REC.map(r=>{const okl=myL(s,r.make)>=r.lv,c1=Object.entries(r.cost).every(([k,v])=>s.res[k]>=v),
    c2=Object.entries(r.comp).every(([k,v])=>(s.res[k]||0)>=v);return okl&&c1&&c2?1:0;}).join(""),
   PORTS.map(p=>s.res.stores>=p.stores?1:0).join(""),
@@ -2448,6 +2466,7 @@ function fire(t){
  else if(d.build)buildShip(d.build);
  else if(d.land!==undefined){const fi=+d.land;const ti=S.trips.findIndex(t=>t.ship===fi&&t.home);if(ti>=0)land(ti);}
  else if(d.mend!==undefined)mend(+d.mend);
+ else if(d.scrap!==undefined)scrapShip(+d.scrap);
  else if(d.table)setTable();
  else if(d.auto){ if(!S.auto)S.auto={}; S.auto[d.auto]=autoOn(S,d.auto)?0:1; lastSig=""; maybeDraw(); }
  else if(d.feast)feast();
