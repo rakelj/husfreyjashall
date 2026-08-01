@@ -256,8 +256,8 @@ const REC=[
  {id:"stick0",en:"Notched stick", slot:"rune",           make:"wood", lv:4, cost:{timber:28},comp:{}, bonus:{xp:.12}, learn:{sk:"wood",lv:6}},
  {id:"tally", en:"Tally stick",   slot:"rune",           make:"wood", lv:8, cost:{timber:110},comp:{glass:1}, bonus:{xp:.26}, pre:"stick0"},
  {id:"kefli", en:"Carved kefli",  slot:"rune",           make:"wood", lv:14,cost:{timber:280},comp:{silk:1},  bonus:{xp:.46}, pre:"tally"},
- {id:"bead",  en:"Amber bead",    slot:"amulet",         make:"weave",lv:5, cost:{},         comp:{amber:2}, bonus:{luck:.18}, learn:{sk:"weave",lv:10}},
- {id:"hammer",en:"Thor's hammer", slot:"amulet",         make:"smith",lv:12,cost:{iron:80},  comp:{silk:1},  bonus:{luck:.34,all:.05}, pre:"bead"}
+ {id:"bead",  en:"Amber bead",    slot:"amulet",         make:"weave",lv:5, cost:{},         comp:{amber:2}, bonus:{luck:.10}, learn:{sk:"weave",lv:10}},
+ {id:"hammer",en:"Thor's hammer", slot:"amulet",         make:"smith",lv:12,cost:{iron:80},  comp:{silk:1},  bonus:{luck:.20,all:.05}, pre:"bead"}
 ];
 /* Lore — the slow parallel track. Runs on its own clock while you work. */
 /* Lore — lines of five tiers rather than one-shot projects. Cost and time climb,
@@ -303,9 +303,9 @@ const VOY_SCALE=16;
    may keep a fleet: each ship sails on its own, so several can be at sea at once.
    reach: which waters she can cross (0 home · 1 west/north · 2 east). */
 const SHIPS=[
- {id:"faering", en:"Færing",   build:{hull:20,sailcloth:8},           reach:0, speed:1.0,  wear:1.0,  cargo:1.0},
- {id:"knarr",   en:"Knarr",    build:{hull:80,sailcloth:34,iron:20},  reach:1, speed:1.15, wear:0.82, cargo:1.7},
- {id:"longship",en:"Longship", build:{hull:200,sailcloth:90,iron:70}, reach:2, speed:1.35, wear:0.70, cargo:2.5}
+ {id:"faering", en:"Færing",   build:{hull:20,sailcloth:8},           reach:0, speed:1.0,  wear:1.0,  cargo:1.0, fitx:1.0},
+ {id:"knarr",   en:"Knarr",    build:{hull:80,sailcloth:34,iron:20},  reach:1, speed:1.25, wear:0.80, cargo:2.1, fitx:1.7},
+ {id:"longship",en:"Longship", build:{hull:200,sailcloth:90,iron:70}, reach:2, speed:1.55, wear:0.66, cargo:3.4, fitx:2.6}
 ];
 /* Four waters, west to east, each with its own bias in the rare things it brings home.
    reach must be met by the ship that sails there. */
@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.19";
-const BUILT="01 Aug 2026 · 17:58 UTC";
+const BUILD="v0.17.23";
+const BUILT="01 Aug 2026 · 21:35 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Tasks now grow in scope and reward with your skill in the work they ask for, and the season's work pays in silver or raw stuff — never a recipe or a thing from the sea.";
+const NOTES="Fortune is reworked: each charm in the hall is its own chance, so another always helps and it never quite reaches certainty. It sways common finds most, the rarest least — and what a hand turns up at her own work follows her own charm.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -601,7 +601,7 @@ function wageRate(s){   // per second, for the flow panel only
  let r=0;
  s.crew.forEach((c,i)=>{ if(!working(s,i))return;
   const R=runner(s,c); if(!R)return;
-  const short=R.a.use&&Object.keys(R.a.use).some(k=>s.res[k]<R.a.use[k]);
+  const short=R.a.use&&Object.keys(R.a.use).some(k=>s.res[k]<eUse(R.a,R.yld,k));
   if(short||s.starved)return;
   r+=wageFor(s,c)/R.secs; });
  return r;
@@ -784,6 +784,18 @@ function eqBonus(eq,skl,kind){
   if(kind==="luck"&&r.bonus.luck)v+=r.bonus.luck;}
  return v;
 }
+// one luck stat for the whole hall — every amulet, yours and the crew's, together.
+// It drives byproducts, rare things at sea, the market's pay, and sea charts alike.
+const amuletLuck=eq=>eqBonus(eq,null,"luck");                 // one person's amulet (0, .10 or .20)
+// Fortune: each amulet is its own charm, so the hall's luck is the chance at least one favours
+// you — 1−∏(1−each). It climbs toward 100% but never reaches it, so a new amulet always helps.
+// (the miss-chance is floored just above zero so fortune stays strictly under 100% however
+//  many charms are gathered — there is always a sliver left for a new one to shave off)
+const hallFortune=s=>1-Math.max(1e-9,[s.eq,...s.crew.map(c=>c.eq)].reduce((p,eq)=>p*(1-amuletLuck(eq)),1));
+// how much luck sways each rare thing — a lot for the common ones, little (but not nothing) for
+// the rarest. Effective find ≈ base·(1 + sens·fortune); the rarer the thing, the lower its sens.
+const LUCK_SENS={herbs:2.0,bark:2.0,clay:2.0,horn:2.0,amber:1.5,whetstone:1.25,ivory:1.0,glass:0.9,silk:0.8};
+const luckMult=(k,f)=>1+(LUCK_SENS[k]===undefined?1:LUCK_SENS[k])*f;
 function mkP(i){const p={name:NAMES[i%NAMES.length],xp:{},at:null};for(const k in SK)p.xp[k]=0;return p;}
 function fresh(){
  const xp={},tot={};for(const k in SK)xp[k]=0;[...RES,...COMP].forEach(k=>tot[k]=0);
@@ -810,12 +822,19 @@ function runner(s,c){
  const yld=(1+0.055*(L-1))*(1+eqBonus(eq,a.sk,"yield")*RX.tool())*RX.age()*RX.table()*(MAKING.includes(a.sk)?RX.make():1);
  return{a,L,secs:a.secs/spd,yld,xpm:1+eqBonus(eq,a.sk,"xp")};
 }
+// per-cycle input, scaled by the SAME yield as the output — so a higher-level processor
+// eats timber as fast as it turns out charcoal, and the processor:gatherer ratio holds
+// as levels diverge (before, input was flat per cycle and processors fell behind).
+const eUse=(a,yld,k)=>a.use[k]*(yld||1)*(k==="ore"?RX.ore():1);
+// the yield you (the player) would get at a craft — for the Work tab's "uses" labels,
+// which have no live runner to read from
+const yldFor=(s,sk)=>(1+0.055*(myL(s,sk)-1))*(1+eqBonus(s.eq,sk,"yield")*RX.tool())*RX.age()*RX.table()*(MAKING.includes(sk)?RX.make():1);
 function doCycle(s,c){
  const _a=ACT[c?c.act:s.act];
  if(s.starved&&!(_a&&_a.out&&_a.out.food))return;   // when the hall starves, only work that brings in food goes on — anyone's, not just yours
  const R=runner(s,c);if(!R)return;
  const a=R.a;
- const uc=k=>a.use[k]*(k==="ore"?RX.ore():1);
+ const uc=k=>eUse(a,R.yld,k);
  if(a.use)for(const k in a.use)if(s.res[k]<uc(k))return;
  // a hand won't work unpaid — check the purse before spending any inputs, or the
  // stores are burned through with nothing to show while the silver is out
@@ -829,7 +848,7 @@ function doCycle(s,c){
  s.did=s.did||{}; s.did[c?c.act:s.act]=(s.did[c?c.act:s.act]||0)+1;   // a tally per work, so a task can name one
  for(const k in a.out)give(s,k,a.out[k]*R.yld);
  if(a.rare)for(const k in a.rare){const eq=c?c.eq:s.eq;
-  if(Math.random()<rareChance(a.rare[k],RX.rare()*(1+eqBonus(eq,null,"luck")))){give(s,k,1);
+  if(Math.random()<rareChance(a.rare[k],RX.rare()*luckMult(k,amuletLuck(eq)))){give(s,k,1);   // a hand's own charm sways their own finds
    log(`${c?c.name:"You"} ${k==="herbs"?"turn up herbs among the grass":"bring"+(c?"s":"")+" up "+CN[k].toLowerCase()+" from the water"}.`,"y");
    if(!c&&k!=="herbs")toast("Rare: "+CN[k]);}}
  const bl=c?cL(c,a.sk):myL(s,a.sk);
@@ -851,14 +870,14 @@ function advance(dt){
   const s=S;s.t+=dt;
  // player
  const R=runner(s,null);
- if(R){const need=R.a.use?Object.keys(R.a.use).every(k=>s.res[k]>=R.a.use[k]):true;
+ if(R){const need=R.a.use?Object.keys(R.a.use).every(k=>s.res[k]>=eUse(R.a,R.yld,k)):true;
   if(need){s.prog+=dt;while(s.prog>=R.secs*1000){s.prog-=R.secs*1000;doCycle(s,null);}}
   else s.prog=Math.min(s.prog,R.secs*1000);}
  // crew
  s.crew.forEach((c,i)=>{
   if(c.rest||c.away||i>=HALL[s.hall].crew)return;   // set down, or over the roof
   const r=runner(s,c);if(!r)return;
-  const ok=r.a.use?Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]):true;
+  const ok=r.a.use?Object.keys(r.a.use).every(k=>s.res[k]>=eUse(r.a,r.yld,k)):true;
   if(!ok)return;
   c.prog+=dt;while(c.prog>=r.secs*1000){c.prog-=r.secs*1000;doCycle(s,c);}});
  // voyage
@@ -956,13 +975,13 @@ function flows(s){
   const R=runner(s,c); if(!R)return;
   const who=c?c.name:"you";
   if(c&&(c.rest||i>=HALL[s.hall].crew)){ idle.push({who,why:c.rest?"set down":"no room"}); return; }
-  const short=R.a.use&&Object.keys(R.a.use).filter(k=>s.res[k]<R.a.use[k]*(k==="ore"?RX.ore():1));
+  const short=R.a.use&&Object.keys(R.a.use).filter(k=>s.res[k]<eUse(R.a,R.yld,k));
   if(s.starved&&!R.a.out.food){ idle.push({who,why:"nothing to eat"}); return; }
   if(short&&short.length){ idle.push({who,why:"no "+short.join(", ")}); return; }
   const per=60/R.secs;
   for(const k in R.a.out) add(k,R.a.out[k]*R.yld*per,who);
-  if(R.a.use)for(const k in R.a.use) add(k,-R.a.use[k]*(k==="ore"?RX.ore():1)*per,who);
-  if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*(1+eqBonus(c?c.eq:s.eq,null,"luck")))*per,who);
+  if(R.a.use)for(const k in R.a.use) add(k,-eUse(R.a,R.yld,k)*per,who);
+  if(R.a.rare)for(const k in R.a.rare) add(k,rareChance(R.a.rare[k],RX.rare()*luckMult(k,amuletLuck(c?c.eq:s.eq)))*per,who);
  };
  one(null,-1); s.crew.forEach((c,i)=>one(c,i));
  const eat=eatRate(s)*60; if(eat>0) add("food",-eat,"the hall eats");
@@ -1474,7 +1493,8 @@ const seaComplete=(s,id)=>portsBySea(id).every(p=>portOpen(s,p.id));   // every 
 const seaUnlocked=(s,id)=>{const i=seaIndex(id);return i<=0||seaComplete(s,SEAS[i-1].id);};   // the water before it, fully charted
 const voyMs=(s,sh,p)=>p.mins*60000*VOY_SCALE*RX.voy()/shipDef(sh.tier).speed;   // p is a port object
 const shareOf=(s,p)=>Math.max(0.05,p.share*(1-0.12*TIER(s,"known")));
-const fitOf=(s,p)=>Math.round(p.fit*(1+0.25*(s.age||0))*(1-0.10*TIER(s,"known")));
+// fit scales with the ship — a bigger hull takes a bigger félag to fit out and provision
+const fitOf=(s,p,sh)=>Math.round(p.fit*(1+0.25*(s.age||0))*(1-0.10*TIER(s,"known"))*(sh?shipDef(sh.tier).fitx:1));
 function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
  const sh=s.fleet[shipIdx]; if(!sh){toast("No ship for that");return;}
  if(tripOf(s,shipIdx)){toast("She is already at sea");return;}
@@ -1483,7 +1503,7 @@ function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
  if(!shipCanSail(sh,portId)){toast(`A ${shipDef(sh.tier).en.toLowerCase()} cannot reach ${seaOfPort(portId).en.toLowerCase()}`);return;}
  if(sh.cond<=0){toast("There is nothing left of her to sail");return;}
  if(s.res.stores<p.stores){toast(`Wants ${p.stores} stores`);return;}
- const fit=fitOf(s,p);
+ const fit=fitOf(s,p,sh);
  if(s.res.silver<fit){toast(`${nfm(fit)} silver to fit her out and take a crew`);return;}
  s.res.silver-=fit; s.res.stores-=p.stores;
  sh.last=portId; s.sailed=[...new Set([...(s.sailed||[]),portId])];
@@ -1492,10 +1512,11 @@ function sail(portId,shipIdx){const s=S,p=portDef(portId);if(!p)return;
 // the hold is decided when she touches the sand, so you can see it before you unload
 function rollHaul(s,portId,sh){
  const p=portDef(portId), d=shipDef(sh.tier);
- const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+ const luck=hallFortune(s);
  const sv=Math.round((p.silver[0]+Math.random()*(p.silver[1]-p.silver[0]))*(1+luck*0.5)*RX.silver()*d.cargo);
  const comps={};
- for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*(1+luck))) comps[k]=(comps[k]||0)+1;
+ // a bigger hold has more room for rare things to ride home in
+ for(const k in p.comp) if(Math.random()<rareChance(p.comp[k],RX.rare()*luckMult(k,luck)*(0.8+0.2*d.cargo))) comps[k]=(comps[k]||0)+1;
  const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
  let way=null;
  // the finer gear is only ever shown to you, never worked out alone — but rarely
@@ -1535,7 +1556,7 @@ function scrapShip(fi){ const s=S,sh=s.fleet[fi]; if(!sh)return;
 // a hand on the tiller mends her from the hall's stores and puts her out again on her last water
 function autoTend(s,fi){ const sh=s.fleet[fi]; if(!sh||!sh.last)return; const p=portDef(sh.last); if(!p)return;
  let guard=0; while(TIER(s,"caulk")&&autoOn(s,"caulk")&&sh.cond<p.wear+10&&guard++<20){ if(!mendShip(s,fi,true))break; }
- if(!tripOf(s,fi)&&shipCanSail(sh,sh.last)&&portOpen(s,sh.last)&&s.res.stores>=p.stores&&sh.cond>=p.wear+10&&s.res.silver>=fitOf(s,p)) sail(sh.last,fi);
+ if(!tripOf(s,fi)&&shipCanSail(sh,sh.last)&&portOpen(s,sh.last)&&s.res.stores>=p.stores&&sh.cond>=p.wear+10&&s.res.silver>=fitOf(s,p,sh)) sail(sh.last,fi);
 }
 function land(ti){const s=S; const t=s.trips[ti]; if(!t)return;
  const p=portDef(t.dest), sh=s.fleet[t.ship];
@@ -1736,12 +1757,12 @@ function view_work(s){
    h+=`<div class="card"><h2>Idle</h2><div class="note">You are standing on the shore doing nothing.
     Choose a work below and it will run on its own — while you read, and while the app is shut.</div></div>`;
   } else {
-  const stall=a.use&&!Object.keys(a.use).every(k=>s.res[k]>=a.use[k]);
+  const stall=a.use&&!Object.keys(a.use).every(k=>s.res[k]>=eUse(a,R.yld,k));
   h+=`<div class="card act"><div class="hd"><span class="nm">${a.en}</span><span class="lv">${SK[a.sk]} ${myL(s,a.sk)}</span></div>
-   <div class="sub">${Object.entries(a.out).map(([k,v])=>`+${f(v*R.yld)} ${k}`).join(", ")} every ${R.secs.toFixed(1)}s${a.use?` · uses ${Object.entries(a.use).map(([k,v])=>v+" "+k).join(", ")}`:""}${a.rare?` · sometimes ${(CN[Object.keys(a.rare)[0]]||Object.keys(a.rare)[0]).toLowerCase()}`:""}</div>
+   <div class="sub">${Object.entries(a.out).map(([k,v])=>`+${f(v*R.yld)} ${k}`).join(", ")} every ${R.secs.toFixed(1)}s${a.use?` · uses ${Object.keys(a.use).map(k=>f(eUse(a,R.yld,k))+" "+k).join(", ")}`:""}${a.rare?` · sometimes ${(CN[Object.keys(a.rare)[0]]||Object.keys(a.rare)[0]).toLowerCase()}`:""}</div>
    <div class="bar"><i id="pb" style="width:${stall?0:pct(s.prog,R.secs*1000)}%"></i></div>
    <div class="bar xp sm"><i id="px" style="width:${xpBar(s.xp[a.sk])}%"></i></div>
-   ${stall?`<div class="sub" style="color:var(--rust)">Stopped — no ${Object.keys(a.use).filter(k=>s.res[k]<a.use[k]).join(", ")}</div>`:""}
+   ${stall?`<div class="sub" style="color:var(--rust)">Stopped — no ${Object.keys(a.use).filter(k=>s.res[k]<eUse(a,R.yld,k)).join(", ")}</div>`:""}
    ${(()=>{
      const worn=s.eq.tool, wr=worn?REC.find(x=>x.id===worn.rec):null;
      const b=bestToolFor(s,a.sk);
@@ -1786,12 +1807,13 @@ function view_work(s){
       on.map(o=>o.c.name+(o.working?(o.c.rest?" — set down":""):" — no room")).join(", ")}</span>`:"";
     return `<div style="margin-bottom:9px">
      <div class="sub" style="margin-bottom:4px">${SK[sk]} ${myL(s,sk)}${who?" · "+who:""}</div>
-     <div class="grid">`+acts.map(k=>{const x=ACT[k];
-      const want=x.use&&!Object.keys(x.use).every(r=>s.res[r]>=x.use[r]);
+     <div class="grid">`+acts.map(k=>{const x=ACT[k], xy=yldFor(s,x.sk);
+      const use=r=>eUse(x,xy,r);
+      const want=x.use&&!Object.keys(x.use).every(r=>(s.res[r]||0)>=use(r));
       return `<button class="pick ${s.act===k?"on":""} ${want?"want":""}" data-act="${k}" data-who="me">
        <b>${x.en}</b><small>${Object.entries(x.out).map(([r,v])=>"+"+v+" "+r).join(", ")} · ${x.secs}s${
         x.rare?" · "+Object.keys(x.rare)[0]:""}</small>${
-        x.use?`<span class="who">uses ${Object.entries(x.use).map(([r,v])=>`<span${(s.res[r]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${r}</span>`).join(", ")}</span>`:""}</button>`;}).join("")
+        x.use?`<span class="who">uses ${Object.keys(x.use).map(r=>`<span${(s.res[r]||0)>=use(r)?"":` style="color:var(--rust)"`}>${f(use(r))} ${r}</span>`).join(", ")}</span>`:""}</button>`;}).join("")
      +`</div></div>`;}).join("");}).join("")
    +`${s.unlocked.length<19?`<div class="note" style="margin-top:4px">More work opens as you go.</div>`:""}
    ${TIER(s,"hand")?`<button data-auto="hand" style="margin-top:8px;width:100%;${autoOn(s,"hand")?"border-color:var(--patina);color:var(--patina)":"opacity:.5"}">${autoOn(s,"hand")?"tools come to hand":"you change tools yourself"}</button>`:""}</div>`;
@@ -1839,16 +1861,17 @@ function flowCard(s){
 }
 function view_crew(s){
  let h="";
-  const meR=runner(s,null);
-  h+=`<div class="card"><h2>You</h2>${meR
-    ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.entries(meR.a.use).map(([k,v])=>`<span${(s.res[k]||0)>=v?"":` style="color:var(--rust)"`}>${v} ${k}</span>`).join(", ")}`:""}</div>`
-    :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}${eqHtml(s.eq,"me")}</div>`;
+  const meR=runner(s,null), luck=hallFortune(s);
+  h+=`<div class="card"><h2>You <span class="sub mono" style="color:${luck>0?"var(--gold)":"var(--dim)"}">fortune ${Math.round(luck*100)}%</span></h2>${meR
+    ?`<div class="sub">${meR.a.en} — ${Object.entries(meR.a.out).map(([k,v])=>`+${f(v*meR.yld)} ${k}`).join(", ")} / ${meR.secs.toFixed(1)}s${meR.a.use?` · uses ${Object.keys(meR.a.use).map(k=>`<span${(s.res[k]||0)>=eUse(meR.a,meR.yld,k)?"":` style="color:var(--rust)"`}>${f(eUse(meR.a,meR.yld,k))} ${k}</span>`).join(", ")}`:""}</div>`
+    :`<div class="sub" style="color:var(--dim)">No work chosen — pick one on the Work tab.</div>`}
+    ${luck>0?`<div class="sub" style="color:var(--dim)">Each charm is its own chance at fortune — the more in the hall, the likelier one favours you. It sways what the sea gives up, what a market pays, and the charts that come home. What a hand turns up at her own work follows her own charm.</div>`:""}${eqHtml(s.eq,"me")}</div>`;
   s.crew.forEach((c,i)=>{const r=runner(s,c);
-   const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=r.a.use[k]);
+   const stall=r.a.use&&!Object.keys(r.a.use).every(k=>s.res[k]>=eUse(r.a,r.yld,k));
    const capped=cL(c,r.a.sk)>=(c.capL||99);
    const noRoom=i>=HALL[s.hall].crew;
    h+=`<div class="card"><div class="hd"><span class="nm">${c.name}</span><span class="lv">${SK[r.a.sk]} ${cL(c,r.a.sk)} / ${c.capL||"?"}</span></div>
-    <div class="sub">${r.a.en} — ${Object.entries(r.a.out).map(([k,v])=>`+${f(v*r.yld)} ${k}`).join(", ")} / ${r.secs.toFixed(1)}s${r.a.use?` · uses ${Object.entries(r.a.use).map(([k,v])=>v+" "+k).join(", ")}`:""}</div>
+    <div class="sub">${r.a.en} — ${Object.entries(r.a.out).map(([k,v])=>`+${f(v*r.yld)} ${k}`).join(", ")} / ${r.secs.toFixed(1)}s${r.a.use?` · uses ${Object.keys(r.a.use).map(k=>f(eUse(r.a,r.yld,k))+" "+k).join(", ")}`:""}</div>
     <div class="bar"><i id="cb${i}" style="width:${c.away?0:pct(c.prog,r.secs*1000)}%"></i></div>
     <div class="bar xp sm"><i id="cx${i}" style="width:${xpBar(c.xp[r.a.sk]||0)}%"></i></div>
     ${(()=>{const acts=Object.keys(ACT).filter(k=>ACT[k].sk===r.a.sk&&s.unlocked.includes(k));
@@ -1858,7 +1881,7 @@ function view_crew(s){
         return `<button data-act="${k}" data-who="${i}" style="${c.act===k?"border-top-color:var(--gold);color:var(--gold)":"opacity:.55"}">${x.en}</button>`;}).join("")
        +`</div>`;})()}
     ${noRoom?`<div class="sub" style="color:var(--rust)">No room under the roof — ${SHE(c)} does nothing until the hall is raised.</div>`
-      :stall?`<div class="sub" style="color:var(--rust)">Standing idle — no ${Object.keys(r.a.use).filter(k=>s.res[k]<r.a.use[k]).join(", ")}</div>`:""}
+      :stall?`<div class="sub" style="color:var(--rust)">Standing idle — no ${Object.keys(r.a.use).filter(k=>s.res[k]<eUse(r.a,r.yld,k)).join(", ")}</div>`:""}
     ${(()=>{const A=allot(s);
       const want=Object.keys(SLOTS).map(sl=>A.need[i+"|"+sl]).filter(nd=>nd&&nd.wants);
       if(!want.length)return "";
@@ -2046,7 +2069,7 @@ function view_sea(s){
    const unlocked=seaUnlocked(s,sea.id), canReach=fleetReach(s)>=sea.reach;
    const ports=portsBySea(sea.id), openCount=ports.filter(p=>portOpen(s,p.id)).length;
    const complete=seaComplete(s,sea.id);
-   const luck=eqBonus(s.eq,null,"luck")+s.crew.reduce((a,c)=>a+eqBonus(c.eq,null,"luck"),0);
+   const luck=hallFortune(s);
    const m=(1+luck*0.5)*RX.silver();
    let tag="";
    if(!unlocked) tag=` <span class="tag">chart all of ${SEAS[si-1].en.toLowerCase()} first</span>`;
@@ -2059,11 +2082,13 @@ function view_sea(s){
        return `<div class="row"><span style="color:var(--dim)">${p.en} <span class="tag">uncharted</span>
          <div class="sub">${canReach?`A chart from ${fr?fr.en.toLowerCase():"the deepest water here"} may open her.`:"Farther than your ships can reach."}</div></span></div>`;
       }
-      const fit=fitOf(s,p), shr=shareOf(s,p);
+      const shr=shareOf(s,p);
       const senders=canReach?idle.filter(x=>shipCanSail(x.sh,p.id)):[];
-      const lowStores=s.res.stores<p.stores, lowSilver=s.res.silver<fit;
+      const lowStores=s.res.stores<p.stores;
+      const fitFor=x=>fitOf(s,p,x.sh);                         // fit now varies by the ship you send
+      const fits=senders.map(fitFor), cheapest=fits.length?Math.min(...fits):fitOf(s,p), dearest=fits.length?Math.max(...fits):cheapest;
       const btns=senders.length?senders.map(x=>{
-        const worn=x.sh.cond<p.wear+10, ok=!lowStores&&!lowSilver&&!worn;
+        const fit=fitFor(x), worn=x.sh.cond<p.wear+10, ok=!lowStores&&s.res.silver>=fit&&!worn;
         // the ship's own voyage time (÷ her speed), so a faster hull reads as faster here
         const label=(s.fleet.length>1?shipDef(x.sh.tier).en.toLowerCase():"sail")+" · "+dur(voyMs(s,x.sh,p));
         return `<button data-sail="${p.id}|${x.i}" ${ok?"":"disabled"}>${label}</button>`;
@@ -2072,13 +2097,13 @@ function view_sea(s){
       const why=[];
       if(canReach&&senders.length){
         if(lowStores)why.push(`wants ${p.stores} stores, ${f(s.res.stores)} in hand`);
-        if(lowSilver)why.push(`wants ${nfm(fit)} silver to fit, ${nfm(s.res.silver)} in the purse`);
-        if(!lowStores&&!lowSilver&&senders.every(x=>x.sh.cond<p.wear+10))why.push("every free ship is too worn — mend one first");
+        if(!lowStores&&s.res.silver<cheapest)why.push(`wants ${nfm(cheapest)} silver to fit, ${nfm(s.res.silver)} in the purse`);
+        if(!lowStores&&s.res.silver>=cheapest&&senders.every(x=>x.sh.cond<p.wear+10))why.push("every free ship is too worn — mend one first");
       }
       const cr=short=>short?"var(--rust)":"var(--dim)";
       return `<div class="row"><span>${p.en}
-        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · <span style="color:${cr(lowStores)}">${p.stores} stores</span> · <span style="color:${cr(lowSilver)}">${nfm(fit)} to fit</span> · they take ${Math.round(shr*100)}%</div>
-        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*(1+luck))*100)}%</span>`).join("")}</div>
+        <div class="sub">${dur(p.mins*60000*VOY_SCALE*RX.voy())} · <span style="color:${cr(lowStores)}">${p.stores} stores</span> · <span style="color:${cr(fits.length&&s.res.silver<cheapest)}">${nfm(cheapest)}${dearest>cheapest?"–"+nfm(dearest):""} to fit</span> · they take ${Math.round(shr*100)}%</div>
+        <div class="sub">${Math.round(p.silver[0]*m)}–${Math.round(p.silver[1]*m)} silver · ~${Math.round(p.wear*RX.wear())} cond · ${Object.keys(p.comp).map(k=>`<span class="tag amber">${CN[k]} ${Math.round(rareChance(p.comp[k],RX.rare()*luckMult(k,luck))*100)}%</span>`).join("")}</div>
         ${why.length?`<div class="sub" style="color:var(--rust)">${why.join(" · ")}</div>`:""}</span>
         <span class="give" style="max-width:52%">${btns}</span></div>`;
      }).join("");
@@ -2342,7 +2367,7 @@ function paint(){
  if(tab==="work"){
   if(atTable(s))W("tbl",pct(s.table,s.tableMax||1));
   const R=runner(s,null);
-  if(R){const stall=R.a.use&&!Object.keys(R.a.use).every(k=>s.res[k]>=R.a.use[k]);
+  if(R){const stall=R.a.use&&!Object.keys(R.a.use).every(k=>s.res[k]>=eUse(R.a,R.yld,k));
    W("pb",stall?0:pct(s.prog,R.secs*1000)); W("px",xpBar(s.xp[R.a.sk]));}
   Object.keys(SK).forEach(k=>W("sx_"+k,xpBar(s.xp[k])));
  }
@@ -2375,7 +2400,7 @@ function paint(){
    :(hallReady||orlReady)?'<span class="dot"></span>':""));
  // your own work stopped for want of materials
  const R0=runner(s,null);
- const stuck=!s.act||(R0&&R0.a.use&&Object.keys(R0.a.use).some(k=>s.res[k]<R0.a.use[k]));
+ const stuck=!s.act||(R0&&R0.a.use&&Object.keys(R0.a.use).some(k=>s.res[k]<eUse(R0.a,R0.yld,k)));
  set("tw","Work"+(stuck?'<span class="dot" style="background:var(--rust)"></span>':""));
  // someone at the gate you can afford, with room for them
  const canHire=s.crew.length<HALL[s.hall].crew&&(s.offers||[]).some(o=>s.res.silver>=o.cost);
@@ -2721,7 +2746,7 @@ function catchUp(){
  const lost=Object.entries(S.lost||{}).filter(([,v])=>v>1).sort((a,b)=>b[1]-a[1]).slice(0,3)
    .map(([k,v])=>`${nfm(v)} ${k}`).join(", ");
  const idle=S.crew.filter((c,i)=>{ if(i>=HALL[S.hall].crew)return true;
-   const r=runner(S,c); return r&&r.a.use&&Object.keys(r.a.use).some(k=>S.res[k]<r.a.use[k]); })
+   const r=runner(S,c); return r&&r.a.use&&Object.keys(r.a.use).some(k=>S.res[k]<eUse(r.a,r.yld,k)); })
    .map(c=>c.name);
  // what the things you bought actually did while you were gone
  const sailed=after.voy-before.voy, mended=after.mends-before.mends;

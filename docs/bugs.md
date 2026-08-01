@@ -8,14 +8,22 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ---
 
-## 1. 🟡 Ships feel identical on the same route
+## 1. ✅ Ships feel identical on the same route
 Sailing the coastal run with a færing vs a knarr shows no difference.
 
-**Surfacing done (v0.17.8):** each sail button now shows *that ship's* actual voyage
-time (`voyMs`, ÷ her speed), so a knarr visibly beats a færing at the point of
-decision; the fleet card lists each ship's perks (more hold · quicker · wears
-slower). **Still open (balance/decision):** making `fit` scale with ship tier,
-widening the speed/cargo gaps, and letting `cargo` raise the rare-find chance.
+**Surfacing done (v0.17.8):** each sail button shows *that ship's* actual voyage time
+(`voyMs`, ÷ her speed); the fleet card lists each ship's perks (more hold · quicker ·
+wears slower).
+
+**Balance tail done (v0.17.21)** — values reviewed and kept by Rakel, to be felt in play:
+- **`fit` scales with the ship** — added `fitx` (færing 1.0 · knarr 1.7 · longship 2.6);
+  `fitOf(s,p,sh)` multiplies by it. The port row shows the fit as a range across your
+  free ships (`cheapest–dearest`) and each ship's affordability gates its own button.
+- **Wider speed/cargo gaps** so they're felt: knarr speed 1.15→**1.25**, cargo 1.7→**2.1**;
+  longship speed 1.35→**1.55**, cargo 2.5→**3.4** (wear a touch better too).
+- **`cargo` raises the rare-find chance** in `rollHaul` (`×(0.8 + 0.2·cargo)`) — a bigger
+  hold has more room for rare things to ride home, so a longship finds ~48% more often
+  than a færing.
 
 **Reality under the hood:** ships *do* differ — `voyMs` divides the voyage time by
 `ship.speed` (knarr ×1.15, longship ×1.35) and `rollHaul` multiplies silver by
@@ -185,10 +193,29 @@ goes through `dur(loreMins(s,r)*60000)` → "2m 48s". Audited the rest — every
 `loreMins` use already multiplies to ms before display (e.g. `loreMins(s,r)*60000`),
 so this was the only offender.
 
-## 11. 🔴 Unify luck; rebalance amulets
+## 11. ✅ Unify luck; rebalance amulets
 Byproducts, rare mats at sea, market offers, and sea charts should all be driven by
 a single **luck** stat. Luck comes from amulets; the first (Amber bead) is **18%**,
 probably too high. Design a coherent luck system and rebalance the amulet line.
+
+**Fixed (v0.17.20), to Rakel's design:**
+
+- **Fortune can never reach 100%.** Each amulet is an independent *charm*, so the hall's
+  luck is the chance at least one favours you — `1 − ∏(1−each)`. It climbs toward 100%
+  but never arrives (the miss-chance is floored just above 0 so floating-point can't
+  round it to 1), so **adding another charm or hand always helps** — no dead ceiling that
+  would block new items or crew later. 1 hammer 20% · 3 → 49% · a full hall of 9 → 87%.
+- **Player-facing explanation, no maths:** "each charm is its own chance at fortune — the
+  more in the hall, the likelier one favours you." The Crew tab's *You* card shows one
+  combined **fortune X%** that always rises when a charm is added.
+- **A hand's own work follows her own charm.** Land byproducts use only that person's
+  amulet (`amuletLuck`), not the hall total. The hall's fortune governs what the *sea*
+  gives up, what a market pays, and charts.
+- **Luck sways each rare thing differently** (`LUCK_SENS`, effective = base·(1+sens·luck)):
+  common finds swing most, the rarest least but never nothing — herbs/bark/clay/horn
+  **2.0**, amber 1.5, whetstone 1.25, ivory 1.0, glass 0.9, **silk 0.8** (kept generous
+  on Rakel's call rather than a token amount).
+- Amulets rebalanced: **Amber bead 18% → 10%**, **Thor's hammer 34% → 20%** (+5% all kept).
 
 ## 12. ✅ Crew tab should show what each hand is working on
 The Crew tab doesn't say what each person (and you) is currently working on. Add it.
@@ -298,10 +325,37 @@ producing anything — they looked like they were "still working". Reordered `do
 so the purse is checked (and the `unpaid` flag set) *before* any inputs are spent:
 now an unpaid hand consumes nothing and produces nothing until there's silver again.
 
-## 23. 🔴 Processor/gatherer ratio breaks across levels
+## 23. ✅ Processor/gatherer ratio breaks across levels
 Burning charcoal (kiln) at level 19 consumes **less** timber than a level-16 crew
 brings in felling old timber. The intended ~1.5–1.8 processor:gatherer ratio doesn't
 hold as levels diverge. Rework how processing input rates scale with level.
+
+**Fixed (v0.17.22):** the root cause — a gatherer's **output** scaled with yield (∝ level)
+but a processor's **input** was flat per cycle, so it scaled only with speed and fell
+behind as levels rose. Now a craft's per-cycle input is **scaled by the same yield as its
+output** (`eUse(a, yld, k) = a.use[k]·yld·oreMod`), so a leveled kiln eats timber as fast
+as it makes charcoal and the throughput ratio holds across levels (and equalises when a
+processor and gatherer are the same level). Routed **every** input read through `eUse` so
+consumption, the tick's run/stall gates, the flow panel, and the "uses N" labels all
+agree — the labels now show the real per-cycle amount (via a `yldFor(s, sk)` helper for
+the Work-tab buttons, which have no live runner). At level 1 `yld ≈ 1`, so early play is
+unchanged. `doCycle` still checks before it consumes, so nothing can go negative.
+**Confirmed with Rakel (^1.0, input scales exactly like output).** Spec: a processor should
+out-consume a gatherer at the same level, and still do so when the gatherer is higher.
+Measured on the timber chain (feller `3.2/6.5s` → kiln `4.5/5.5s`), consumption ÷ one
+gatherer's output:
+
+| case | old (broken) | now (^1.0) |
+|---|---|---|
+| equal levels, any L | 1.66 → **0.53** by L40 | **1.66, held at every level** |
+| reported bug: L16 feller vs L19 kiln | **1.01** (break-even) | **2.00** |
+| gatherer 14 levels above processor | 0.43 | 0.78 |
+
+Steeper options (`yield^1.3` / `^1.6`) were weighed and rejected: they'd cover bigger level
+gaps but push the late game to 2.3–3.3 gatherers per processor, away from the intended
+1.5–1.8. Note no exponent can guarantee "always more" for an *arbitrary* gap — a large
+enough one always wins; a novice kiln failing to keep up with a master feller is accepted
+as correct. _Levelling a processor makes it faster, not more input-efficient._
 
 ## 24. ✅ Tasks should scale scope + reward with skill level
 Errands (and the other task bands) should scale their quantities and rewards by the
