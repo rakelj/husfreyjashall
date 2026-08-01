@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.15";
-const BUILT="01 Aug 2026 · 16:39 UTC";
+const BUILD="v0.17.16";
+const BUILT="01 Aug 2026 · 17:22 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Crew cost eased: hiring rises more gently as the hall fills and wages are lower; and putting word out for a craft now costs silver to bring all three of that trade — dearer and slower each time.";
+const NOTES="The home kaupstefna will now take a batch of walrus ivory off your hands for a modest price — a sink for what the northern water piles up.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1609,6 +1609,12 @@ function marketOffers(s,p){
  for(let n=0;n<2;n++){ const k=pick(MARKET_BUYABLE);
   const qty=Math.max(5,Math.round(20*wealth*(0.6+Math.random()*0.9)));
   offers.push({kind:"buy",res:k,qty,silver:Math.round(WORTH[k]*qty*(1+spread+Math.random()*0.08))}); }
+ // a standing sink for walrus ivory at the home kaupstefna — it piles up from the
+ // northern water and the singles sell slowly, so dump a batch here for a modest price
+ if(seaDef(p.sea).reach===0 && (s.res.ivory||0)>=3){
+  const qty=Math.min(Math.floor(s.res.ivory),15);
+  offers.push({kind:"sell",res:"ivory",qty,silver:Math.round(RARE_WORTH.ivory*0.5*qty)});
+ }
  return offers;
 }
 function openMarket(s,portId){ const p=portDef(portId); if(!p)return;

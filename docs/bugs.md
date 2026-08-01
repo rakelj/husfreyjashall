@@ -115,7 +115,15 @@ Bigger pass on the kaupstefna markets.
 
 **Naming slice done (v0.17.8):** the market is now labelled "Kaupstefna — <port>" (and
 the open/close log lines match), using the kaupstefna term over the port's own name.
-The refresh-behaviour rules and per-market offer rules below are still open.
+
+**Ivory sink done (v0.17.16):** walrus ivory piled up from the northern water with only
+the slow one-at-a-time `sellRare` rows to shift it. The home kaupstefna (any home-sea
+port, `reach 0`) now carries a **bulk ivory sell offer** whenever you hold ≥3 — sized to
+your stock up to **15**, at a **modest 50 silver each** (vs ~70 for singles), so you can
+dump a batch for a fair price. Fresh offer each time a home market opens.
+
+Still open on #8: refresh-behaviour rule (below), the base-material "¾ of stock" sizing,
+and the "richer / more variety the farther out" markets.
 
 **Naming.** They're generically labelled "Market — <port>". Should use the
 kaupstefna terminology and each market should have a proper name (design.md §9 has
