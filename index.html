@@ -568,10 +568,10 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.18";
-const BUILT="01 Aug 2026 · 17:44 UTC";
+const BUILD="v0.17.19";
+const BUILT="01 Aug 2026 · 17:58 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Kaupstefna stalls now offer to take about three-quarters of a surplus off your hands, and the farther waters hold richer markets — more stalls and better pay.";
+const NOTES="Tasks now grow in scope and reward with your skill in the work they ask for, and the season's work pays in silver or raw stuff — never a recipe or a thing from the sea.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -675,7 +675,13 @@ const trackVal=(s,tr)=>{const [k,v]=tr.split(":");
  if(k==="ev")   return (s.ev||{})[v]||0;
  if(k==="life") return (s.life[v]||0)+(s.tot[v]||0);
  return (s.lev[v]||0)+((s.ev||{})[v]||0);};
-const qScale=s=>1+0.5*(s.age||0);
+// which craft first makes a resource — so a task's size can scale by your skill in it
+const PROD_SK=(()=>{const m={};Object.keys(ACT).forEach(a=>{const A=ACT[a];Object.keys(A.out||{}).forEach(k=>{if(!m[k])m[k]=A.sk;});});return m;})();
+const bestSkill=s=>Math.max(1,...Object.keys(SK).map(k=>myL(s,k)));
+const trSkill=(s,tr)=>{const p=(tr||"").split(":");return p[0]==="res"&&PROD_SK[p[1]]?myL(s,PROD_SK[p[1]]):bestSkill(s);};
+// scope + reward scale with your standing: the age you have reached, and your skill in
+// the very work the task asks for (your best skill, for deeds and season rewards)
+const qScale=(s,tr)=>(1+0.5*(s.age||0))*(1+0.045*(trSkill(s,tr)-1));
 const TIER=(s,id)=>((s&&s.orl)||{})[id]||0;
 const orlCost=(s,u)=>u.tiers[TIER(s,u.id)];
 const orlMaxed=(s,u)=>TIER(s,u.id)>=u.tiers.length;
@@ -1059,24 +1065,25 @@ function doable(s,q){
 }
 const SCARCE=s=>Object.keys(s.res).filter(k=>RES.includes(k)&&k!=="silver")
  .sort((a,b)=>(s.res[a]||0)-(s.res[b]||0));
-function errandPay(s){
+function errandPay(s,mult){
  // never hand out meals — those are cooked, not given
  const short=SCARCE(s).filter(k=>k!=="meals").slice(0,3);
  const k=short[Math.floor(Math.random()*short.length)]||"timber";
- const c=capOf(s), n=Math.max(8,Math.round((c[k]||100)*0.14));
+ const c=capOf(s), n=Math.max(8,Math.round((c[k]||100)*0.14*(mult||1)));
  return {res:k,n};
 }
-function seasonChoices(s){
- // silver is always one of the three; the other two are a rare thing and, if there
- // is one left to learn, a way of making
- const k=qScale(s);
- const out=[{kind:"silver",n:Math.round((400+Math.random()*400)*k)}];
- const un=REC.filter(r=>!s.known.includes(r.id)&&(!r.pre||s.known.includes(r.pre)));
- if(un.length) out.push({kind:"way",rec:un[Math.floor(Math.random()*un.length)].id});
- const c=[...COMP].sort(()=>Math.random()-.5);
- const many=1+Math.floor(Math.random()*2)+Math.floor((s.age||0)/2);
- let i=0; while(out.length<3&&i<c.length) out.push({kind:"comp",res:c[i++],n:many});
- return out;
+const RAW_COMMON=["timber","ore","wool"], RAW_RARE=["herbs","bark","clay","horn"];
+function seasonChoices(s,scale){
+ // a choice of three: silver, a raw material, or a rarer raw material. Never a recipe,
+ // and never a sea thing — the rares are the sea's alone, and must be sailed for.
+ const k=scale||qScale(s);
+ const rc=RAW_COMMON[Math.floor(Math.random()*RAW_COMMON.length)];
+ const rr=RAW_RARE[Math.floor(Math.random()*RAW_RARE.length)];
+ return [
+  {kind:"silver",n:Math.round((400+Math.random()*400)*k)},
+  {kind:"res",res:rc,n:Math.max(10,Math.round((70+Math.random()*50)*k))},
+  {kind:"res",res:rr,n:Math.max(5,Math.round((22+Math.random()*16)*k))}
+ ];
 }
 // a way you have learned since the work was set is no use — swap it for a rare thing
 function liveChoices(s,q){
@@ -1090,9 +1097,10 @@ function liveChoices(s,q){
  return q.choices||[];
 }
 const anA=w=>/^[aeiou]/i.test(w)?"an":"a";
+const resName=k=>CN[k]?CN[k].toLowerCase():k;
 const choiceLabel=c=>c.kind==="way"?(()=>{const n=REC.find(r=>r.id===c.rec).en.toLowerCase();
   return `How ${anA(n)} ${n} is made`;})()
- :c.kind==="comp"?`${c.n} ${CN[c.res].toLowerCase()}`:`${c.n} silver`;
+ :(c.kind==="comp"||c.kind==="res")?`${c.n} ${resName(c.res)}`:`${c.n} silver`;
 function newQ(s,band,opt){
  const o=opt||{};
  const pool=POOL[band].filter(q=>doable(s,q));
@@ -1116,12 +1124,12 @@ function newQ(s,band,opt){
  if(!pick){const tot=free.reduce((a,q)=>a+(q.w||1),0);let r=Math.random()*tot;
   for(const q of free){r-=(q.w||1);if(r<=0){pick=q;break;}}
   if(!pick)pick=free[0];}
- const k=band==="ch"?1:qScale(s);
+ const k=band==="ch"?1:qScale(s,pick.tr);
  const q={band,t:pick.t,tr:pick.tr,n:Math.max(1,Math.round(pick.n*k)),
   base:trackVal(s,pick.tr),done:false};
- if(band==="er"){ q.pay=errandPay(s); q.silver=Math.round(12*qScale(s)); }
+ if(band==="er"){ q.pay=errandPay(s,k); q.silver=Math.round(12*k); }
  if(band==="dy") q.silver=Math.round(pick.r*k);
- if(band==="se") q.choices=seasonChoices(s);
+ if(band==="se") q.choices=seasonChoices(s,k);
  if(band==="ch") q.orlog=Math.round(pick.r*(1+0.35*(s.age||0)));
  return q;
 }
@@ -1155,9 +1163,9 @@ function collect(band,i,choice){
   msg=`${q.pay.n} ${q.pay.res}`+(q.silver?` and ${q.silver} silver`:""); }
  if(band==="dy"){ give(s,"silver",q.silver); msg=`${q.silver} silver`; }
  if(band==="se"){ const c=liveChoices(s,q)[choice||0];
-  if(c.kind==="way"){ if(!s.known.includes(c.rec))s.known.push(c.rec);
+  if(c.kind==="way"){ if(!s.known.includes(c.rec))s.known.push(c.rec);   // legacy in-flight season tasks only
    msg="how a "+REC.find(r=>r.id===c.rec).en.toLowerCase()+" is made"; }
-  else if(c.kind==="comp"){ give(s,c.res,c.n); msg=`${c.n} ${CN[c.res].toLowerCase()}`; }
+  else if(c.kind==="comp"||c.kind==="res"){ give(s,c.res,c.n); msg=`${c.n} ${resName(c.res)}`; }
   else { give(s,"silver",c.n); msg=`${c.n} silver`; } }
  if(band==="ch"){ s.orlog=(s.orlog||0)+q.orlog; msg=`${q.orlog} ørlǫg`; s.chDone=[...(s.chDone||[]),q.t]; }
  arr.splice(i,1); s.taken=(s.taken||0)+1;
