@@ -580,10 +580,11 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.26";
-const BUILT="01 Aug 2026 · 21:35 UTC";
-// one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Fortune is reworked: each charm in the hall is its own chance, so another always helps and it never quite reaches certainty. It sways common finds most, the rarest least — and what a hand turns up at her own work follows her own charm.";
+const BUILD="v0.17.27";
+const BUILT="02 Aug 2026 · 10:25 UTC";
+// one line, updated each build, so it is obvious at a glance when a new version has landed.
+// BUILD, BUILT and NOTES move together — a stamp without the other two is a lie.
+const NOTES="A tool no longer waits on a chance find you may never have made: a shepherd of fifteen works out her comb whether or not horn ever fell to her. Chance finds now say where they truly came from, and a hand's gear is fitted in her own slot rather than pressed on her by a shortcut.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.

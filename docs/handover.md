@@ -66,6 +66,28 @@ single 33 KB function; do not let it become one again.
 - Offline: `advance(dt)` is split out of `tick()` so time can be replayed in bulk.
   Catch-up runs in 60 s chunks, 5 min chunks past six hours, capped at 14 h.
 
+### The release stamp
+
+Three constants sit together near the top of the state block and **must be updated
+together, every build**:
+
+| constant | what it is | gets it wrong how |
+|---|---|---|
+| `BUILD` | `"v0.17.27"` — also what the freshness checker compares | forgetting it means nobody is offered the update at all |
+| `BUILT` | `"02 Aug 2026 · 10:25 UTC"` — shown under the Hall tab | goes stale silently; nothing breaks, so nothing reminds you |
+| `NOTES` | the italic *"new this build — …"* line | describes the wrong build; worse than blank, because it reads as current |
+
+`BUILT` and `NOTES` have no consumer that fails when they are wrong, which is exactly
+why they get skipped. Treat a `BUILD` bump as incomplete until all three are done.
+
+- Get the real time — `date -u '+%d %b %Y · %H:%M UTC'`. Do not carry the old one forward.
+- `NOTES` is **one line, in her voice, about what a player will notice** — not a
+  changelog and not the bug number. If several builds land between her opening the
+  app, cover what changed since the last build she actually saw.
+- Never edit a `BUILD` already pushed. The checker compares the string, so anyone
+  already on it would never be offered the change. Bump instead.
+- Then mirror to `sites/index.html` and confirm the two are byte-identical.
+
 ### Testing
 
 There are no tests in the repo — they were built as throwaway Node harnesses that
@@ -102,6 +124,13 @@ slice, print the boundaries first and check the function list before and after.
 
 **A version was stamped on a patch that had failed to apply.** v9.12 claimed a fix
 it did not contain. Verify the change is in the file, then stamp.
+
+**`BUILD` was bumped seven builds running while `BUILT` and `NOTES` went stale.**
+v0.17.20 through v0.17.26 all shipped carrying a build stamp a day old and a
+"new this build" line describing something else entirely — so the one thing on
+screen that tells her a build has landed was quietly lying. She had to point it
+out more than once. See the release stamp below: the three constants move
+together or the build does not go out.
 
 **Numbers were shipped without simulating.** Wages were 4× income on release; the
 first "worth making" rule marked everything at once; voyage wear was doubled and
