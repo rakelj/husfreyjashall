@@ -861,4 +861,53 @@ so added tiers do not quietly change the ørlǫg economy that #33–#37 also tou
 
 ---
 
+## 39. ☐ OPEN — A market never closes once you have a few ships, and its offers pile up
+
+**Rakel:** *"Markets need a time cap. With multiple ships at lower sailing times and auto
+sail the market stays up forever. Maybe it helps with buy offers refreshing, right now I
+have over 50 buy offers."*
+
+**Cause.** `openMarket` adds time on every landing with **no ceiling**:
+
+```js
+ex.left += add;  ex.offers = ex.offers.concat(offers);
+```
+
+`add = marketMins(p) = round(4 + p.mins*1.5)`. A market drains one minute per minute, so
+it never closes once landings arrive faster than that — and with a hand on the tiller they
+arrive by themselves.
+
+**Measured** (longship, `VOY_SCALE` 16):
+
+| port | round trip | adds | ships to never close | offers each landing |
+|---|---|---|---|---|
+| Coastal run | 15m | 6m | **3** | 4 (2 sell + 2 buy) |
+| The skerries | 23m | 7m | **4** | 4 |
+| The far fjords | 31m | 8m | **4** | 4 |
+| Kaupang | 39m | 10m | **4** | 4 |
+| The isles | 36m | 9m | 5 | 7 (4 sell + 3 buy) |
+| Miklagarðr | 124m | 22m | 6 | 9 (5 sell + 4 buy) |
+
+**All four home waters are already permanent at four ships** — which is what the slipway
+holds now. The far ports need five or six, so they go permanent too as the strand widens.
+
+And because the same call concatenates offers, a permanent market is also an **unbounded
+list**. At the Coastal run with four longships that is ~16 landings an hour, so **~32 buy
+offers and ~32 sell offers an hour, for ever**. Over 50 buy offers is exactly on curve.
+
+**Two things, and they want fixing together:**
+
+1. **Cap `left`.** Something like `min(cap, left + add)` — the cap presumably a multiple of
+   `marketMins(p)` so far ports still stay open longer than the coast.
+2. **Refresh buys instead of appending** — already logged as **#35(a)**. That alone bounds
+   the buy list; the sell side is meant to accumulate, so it needs the cap in (1) or a
+   count limit of its own to stop growing without end.
+
+**Worth deciding first:** whether a market should be closable at all while you keep
+landing there. A hard cap means a busy port shuts under you mid-trade; a cap on *offers*
+with uncapped time keeps it open but bounded. The second is gentler and probably what the
+"never wipe what is there" rule from #8 was reaching for.
+
+---
+
 *Add new bugs above this line as they come in.*
