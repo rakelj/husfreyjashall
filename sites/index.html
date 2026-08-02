@@ -184,6 +184,9 @@ const craftTier=sk=>TIERS.findIndex(T=>T.ks.includes(sk));   // 0 raw · 1 proce
 const RES=["food","herbs","kelp","fish","timber","bark","ore","clay","wool","horn",
  "salt","charcoal","iron","yarn","cloth","stores","meals","sailcloth","hull","silver"];
 const COMP=["amber","ivory","whetstone","glass","silk"];
+/* Byproducts: never worked for directly, only turned up now and then by one
+   particular way of working. Nothing may be gated behind holding one. */
+const RAW_RARE=["herbs","bark","clay","horn"];
 const RARITY=["silk","glass","ivory","whetstone","amber"];
 const CN={kelp:"Kelp",fish:"Fish",bark:"Bark",clay:"Clay",horn:"Horn",salt:"Salt",
  charcoal:"Charcoal",yarn:"Yarn",sailcloth:"Sailcloth",amber:"Amber",ivory:"Walrus ivory",whetstone:"Eidsborg hone",glass:"Frankish glass",silk:"Eastern silk"};
@@ -568,7 +571,7 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.23";
+const BUILD="v0.17.24";
 const BUILT="01 Aug 2026 · 21:35 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
 const NOTES="Fortune is reworked: each charm in the hall is its own chance, so another always helps and it never quite reaches certainty. It sways common finds most, the rarest least — and what a hand turns up at her own work follows her own charm.";
@@ -925,10 +928,13 @@ function tick(){
 function learnCheck(s){
  REC.forEach(r=>{ if(!r.learn||s.known.includes(r.id))return;
   if(r.pre&&!s.known.includes(r.pre))return;          // never the second before the first
-  // you only work a recipe out once you have made its base materials — no learning
-  // how a plain wrap is cut before you have woven any cloth. Rare sea things
-  // (amber, glass) are not gated, so those recipes still show as a goal to sail for.
-  if(!Object.keys(r.cost||{}).every(k=>(s.tot[k]||0)>0))return;
+  // you only work a recipe out once you have made its staple materials — no learning
+  // how a plain wrap is cut before you have woven any cloth. Byproducts are exempt,
+  // the same as rare sea things: horn falls to you while tending the flock, it is not
+  // a thing you set out to gather, so a shepherd of fifteen who only ever sheared
+  // must still be able to work out her comb. The recipe becomes the reason to go
+  // looking for the horn, never the other way about.
+  if(!Object.keys(r.cost||{}).every(k=>RAW_RARE.includes(k)||(s.tot[k]||0)>0))return;
   // tools follow the chain: a processed-craft tool waits on knowing a raw-craft tool,
   // a product-craft tool on a processed one — raw → processed → product
   if(r.slot==="tool"){ const ti=craftTier(r.sk);
@@ -1091,7 +1097,7 @@ function errandPay(s,mult){
  const c=capOf(s), n=Math.max(8,Math.round((c[k]||100)*0.14*(mult||1)));
  return {res:k,n};
 }
-const RAW_COMMON=["timber","ore","wool"], RAW_RARE=["herbs","bark","clay","horn"];
+const RAW_COMMON=["timber","ore","wool"];
 function seasonChoices(s,scale){
  // a choice of three: silver, a raw material, or a rarer raw material. Never a recipe,
  // and never a sea thing — the rares are the sea's alone, and must be sailed for.
@@ -1951,10 +1957,16 @@ function view_craft(s){
   const unk=list.filter(r=>!s.known.includes(r.id));
   if(!unk.length)return "";
   const byHand=unk.filter(r=>r.learn).length;
+  // name no recipe — but say plainly what the nearest one still wants, so a craft
+  // that has gone quiet can be told from one you are merely still climbing toward.
+  // It is your own hand that works a thing out, never a crew member's.
+  const next=unk.filter(r=>r.learn).map(r=>r.learn).sort((a,b)=>a.lv-b.lv)
+              .find(l=>myL(s,l.sk)<l.lv);
+  const wait=next?` The next comes at ${SK[next.sk]} ${next.lv} — yours is ${myL(s,next.sk)}.`:"";
   return `<div class="sub" style="margin-top:5px;color:var(--dim)">${unk.length} still unknown — ${
     byHand===unk.length?"worked out by getting good at the craft"
     :byHand===0?"the finer sort, only ever shown to you at sea"
-    :`${byHand} by skill, ${unk.length-byHand} only shown to you at sea`}.</div>`;
+    :`${byHand} by skill, ${unk.length-byHand} only shown to you at sea`}.${wait}</div>`;
  };
 
  /* tools, gathered under the craft they serve */

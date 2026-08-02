@@ -403,4 +403,45 @@ Trade-offs / notes:
 
 ---
 
+## 26. ✅ Husbandry 15 but the Horn comb never unlocked (while the weaving tool did)
+
+**Reported:** Husbandry at level 15, its tool still locked; Weaving's tool unlocked.
+
+**Cause.** `learnCheck` refused to work out a recipe until every material in its `cost`
+had been produced at least once (`s.tot[k] > 0`). The intent was sensible — you
+shouldn't work out how a wrap is cut before you've woven any cloth — but three tier-1
+tools list a **byproduct** in their cost:
+
+| tool | craft | cost | byproduct gate |
+|---|---|---|---|
+| Horn comb | Husbandry | 12 timber + **3 horn** | horn |
+| Bark basket | Foraging | 10 timber + **3 bark** | bark |
+| Clay weights | Weaving | 6 cloth + **3 clay** | clay |
+
+Byproducts only fall out of *one specific action*: horn from **Tend the flock** (18%),
+never from **Shear the flock**. Shearing gives more wool (1.6 vs 1.1), so anyone
+working wool sensibly sits on *Shear* and never sees a single horn — and the comb stays
+invisible forever, at any level. Weaving's tool unlocked because clay comes from
+**Work the scree**, which players do reach while digging for ore.
+
+The panel made this worse by stating the opposite: *"still unknown — worked out by
+getting good at the craft"*. Getting good at the craft was exactly what didn't work.
+
+**Fix (v0.17.24).**
+- Byproducts (`herbs, bark, clay, horn`) are **exempt from the material gate**, the same
+  as rare sea things already were. Staples still gate normally — no cloth, no wrap.
+  The recipe is now the reason to go looking for horn, not the other way round.
+- `RAW_RARE` moved up beside the other resource lists so the rule has one definition.
+- The unknown-recipe note now names what the next one actually waits on — *"The next
+  comes at Husbandry 10 — yours is 7."* It names no recipe (discovery is the point) but
+  a craft that has gone quiet can be told from one you're still climbing toward. It
+  reads **your own** level, which also makes clear that a crew member's 15 is not yours.
+
+**Verified** against simulated saves: Husbandry 15 with zero horn now learns the comb;
+below 10 still doesn't; missing the *timber* staple still blocks; bark/clay tools fixed
+alike; wrap-needs-cloth and shears-needs-comb chains still hold. Existing saves pick it
+up on next load — `learnCheck` runs every tick, so no migration is needed.
+
+---
+
 *Add new bugs above this line as they come in.*
