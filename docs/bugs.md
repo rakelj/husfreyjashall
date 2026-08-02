@@ -444,4 +444,81 @@ up on next load — `learnCheck` runs every tick, so no migration is needed.
 
 ---
 
+## 27. ✅ Every chance find said "from the water" (and crew names read ungrammatically)
+
+**Reported:** the Annal showing *"Herborg brings up clay from the water"*, *"Þórunn brings
+up horn from the water"*, *"Gyða brings up bark from the water"* — none of which come
+from water — plus *"Vigdís turn up herbs"* instead of *turns*.
+
+**Cause.** One hardcoded line served every byproduct:
+
+```js
+`${c?c.name:"You"} ${k==="herbs"?"turn up herbs among the grass"
+  :"bring"+(c?"s":"")+" up "+CN[k].toLowerCase()+" from the water"}.`
+```
+
+*"from the water"* was written for the **walrus ivory** — true of that one and nothing
+else — then applied to bark, clay and horn as well. The herbs branch was special-cased
+to escape it, but that branch dropped the `+"s"`, so a named hand always read
+*"Vigdís turn up"*. Only the player, whose verb is bare, read correctly.
+
+**Fix (v0.17.25).** A `FIND` table gives each byproduct its own line, split into verb and
+remainder so agreement is handled in one place for both you and a named hand:
+
+| find | comes from | reads |
+|---|---|---|
+| herbs | Walk the woods | Gyða **turns** up herbs among the grass |
+| bark | Fell old timber | Gyða **strips** bark from the felled trunk |
+| clay | Work the scree | Gyða **digs** clay out of the scree |
+| horn | Tend the flock | Gyða **brings** in horn from the flock |
+| ivory | Fish the deeps | Gyða **brings** up walrus ivory from the deep water |
+
+**Verified:** every `rare` an action can drop has its own line, no unused lines, and both
+the *You* and named-hand forms read correctly; a fallback covers any byproduct added
+later without a line.
+
+**Left alone, worth a decision:** the toast rule is still `k !== "herbs"`, so bark, clay
+and horn each pop a "Rare:" toast at ~18–20% — as frequent as herbs, which is excluded.
+Reserving the toast for genuine sea finds (ivory and rarer) would cut the noise, but it
+changes how the game *feels*, so it stays as-is until asked for.
+
+---
+
+## 28. ✅ The one-tap "give her the tool" button on the crew card (#13 was never finished)
+
+**Reported:** *"Still get the button to give the crew equipment."*
+
+**Cause.** #13 asked for the shortcut equips to go — *"crew equipment, and the player's on
+the Work panel"*. Two were dealt with:
+
+- Work panel quick-equip — **removed** (v0.17.11)
+- Crew slot picker — **kept** deliberately, with a gold `best` mark (v0.17.12)
+
+But a **third** one was never touched: the crew card's own gold notice carried a one-tap
+`give her the horn comb` button, which fits the item without ever opening the slot. It
+predates the whole bug list, so nothing in the #13 work went near it — it was simply
+missed.
+
+**Fix (v0.17.26).** Button removed; the notice now *names* what is waiting, exactly the
+resolution used for the player's Work panel. The fitting is done in the slot, where the
+`best` mark already points at the right pick:
+
+| case | reads |
+|---|---|
+| empty slot | Her tool slot is empty — a horn comb lies in the pile, ready to fit. |
+| better available | A broad axe in the pile would better what he holds. |
+| wrong craft | She is holding an antler pick, which is no use to her — a horn comb lies in the pile. |
+
+**Verified:** no one-tap give buttons remain; `data-eq` now has a single entry point (the
+picker), so its handler is still needed and still works. Article and pronoun agreement
+checked across slots and both genders.
+
+**Note on the report:** the screenshot was **v0.17.4** (31 Jul) on a second, fresh hall —
+a build old enough to predate the service worker (#25, v0.17.13), so that install has no
+way to update itself and is stuck. The button was genuinely still on `main` too, so the
+report stands on its own; but that device needs a manual re-add before it sees any of
+this.
+
+---
+
 *Add new bugs above this line as they come in.*

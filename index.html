@@ -187,6 +187,15 @@ const COMP=["amber","ivory","whetstone","glass","silk"];
 /* Byproducts: never worked for directly, only turned up now and then by one
    particular way of working. Nothing may be gated behind holding one. */
 const RAW_RARE=["herbs","bark","clay","horn"];
+/* Each chance find says where it actually came from. Split into verb and the rest
+   so a named hand reads right beside you: "You strip bark…" / "Gyða strips bark…" */
+const FIND={
+ herbs:["turn", "up herbs among the grass"],
+ bark: ["strip","bark from the felled trunk"],
+ clay: ["dig",  "clay out of the scree"],
+ horn: ["bring","in horn from the flock"],
+ ivory:["bring","up walrus ivory from the deep water"]
+};
 const RARITY=["silk","glass","ivory","whetstone","amber"];
 const CN={kelp:"Kelp",fish:"Fish",bark:"Bark",clay:"Clay",horn:"Horn",salt:"Salt",
  charcoal:"Charcoal",yarn:"Yarn",sailcloth:"Sailcloth",amber:"Amber",ivory:"Walrus ivory",whetstone:"Eidsborg hone",glass:"Frankish glass",silk:"Eastern silk"};
@@ -571,7 +580,7 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.24";
+const BUILD="v0.17.26";
 const BUILT="01 Aug 2026 · 21:35 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed
 const NOTES="Fortune is reworked: each charm in the hall is its own chance, so another always helps and it never quite reaches certainty. It sways common finds most, the rarest least — and what a hand turns up at her own work follows her own charm.";
@@ -852,7 +861,8 @@ function doCycle(s,c){
  for(const k in a.out)give(s,k,a.out[k]*R.yld);
  if(a.rare)for(const k in a.rare){const eq=c?c.eq:s.eq;
   if(Math.random()<rareChance(a.rare[k],RX.rare()*luckMult(k,amuletLuck(eq)))){give(s,k,1);   // a hand's own charm sways their own finds
-   log(`${c?c.name:"You"} ${k==="herbs"?"turn up herbs among the grass":"bring"+(c?"s":"")+" up "+CN[k].toLowerCase()+" from the water"}.`,"y");
+   const [fv,fr]=FIND[k]||["come","across "+resName(k)];
+   log(`${c?`${c.name} ${fv}s`:`You ${fv}`} ${fr}.`,"y");
    if(!c&&k!=="herbs")toast("Rare: "+CN[k]);}}
  const bl=c?cL(c,a.sk):myL(s,a.sk);
  if(c){
@@ -1893,11 +1903,16 @@ function view_crew(s){
       if(!want.length)return "";
       return want.map(nd=>{const r=REC.find(x=>x.id===nd.wants);
        const wr=nd.worn?REC.find(x=>x.id===nd.worn):null;
+       // the notice names what is waiting, as the Work panel does for your own hand —
+       // but the fitting is done in the slot itself. A one-tap "give her the comb"
+       // here would be the same shortcut that was taken off the Work panel (#13).
+       const it=`${anA(r.en.toLowerCase())} ${r.en.toLowerCase()}`;
        return `<div class="sub" style="color:var(--gold);margin-top:5px">${
-         wr&&wr.sk&&wr.sk!==c.sk ? `${Cap(SHE(c))} is holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, which is no use to ${HIM(c)}.`
-         : wr ? `A better ${SLOTS[nd.slot].toLowerCase()} waits in the hall.`
-         : `${Cap(HER(c))} ${SLOTS[nd.slot].toLowerCase()} slot is empty.`}
-        <button data-eq="${r.id}" data-w="${i}" style="min-height:38px;padding:6px 12px;margin-left:6px">give ${HIM(c)} the ${r.en.toLowerCase()}</button></div>`;}).join("");})()}
+         wr&&wr.sk&&wr.sk!==c.sk
+           ? `${Cap(SHE(c))} is holding ${anA(wr.en.toLowerCase())} ${wr.en.toLowerCase()}, which is no use to ${HIM(c)} — ${it} lies in the pile.`
+         : wr ? `${Cap(it)} in the pile would better what ${SHE(c)} holds.`
+         : `${Cap(HER(c))} ${SLOTS[nd.slot].toLowerCase()} slot is empty — ${it} lies in the pile, ready to fit.`
+        }</div>`;}).join("");})()}
     <div class="row" style="padding-top:5px"><span class="sub">${c.rest?`Set down — eating a third, earning nothing`:`At work`}</span>
      <button data-rest="${i}" style="min-height:38px;padding:6px 12px;${c.rest?"border-color:var(--gold);color:var(--gold)":"opacity:.6"}">${c.rest?"take her up":"set her down"}</button></div>
     <div class="sub" style="margin-top:4px">${capped?`${Cap(SHE(c))} has learned all ${SHE(c)} ever will.`:`This is the only work ${SHE(c)} knows.`}${
