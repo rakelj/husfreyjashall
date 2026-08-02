@@ -655,4 +655,310 @@ clears the moment she is unloaded.
 
 ---
 
+## 33. 🔴 Counsel should start at 1, and each task band wants its own line
+
+**Rakel:** *"Ørlǫg line for counsel should start at 1 and there should be similar lines for
+the other task types."*
+
+**How it stands.** One line, `counsel`, drives three of the four bands at once — and the
+fourth not at all:
+
+| band | `BAND.base` | `bandCap` | counsel's effect |
+|---|---|---|---|
+| Errands (`er`) | 4 | `4 + TIER(counsel)` | +1 per tier |
+| The day's work (`dy`) | 3 | `3 + floor(TIER/2)` | +1 every **2** tiers |
+| The season's work (`se`) | 2 | `2 + floor(TIER/3)` | +1 every **3** tiers |
+| Ancestral charges (`ch`) | 3 | `3` — flat | **none** |
+
+So a tier of Counsel buys a whole errand but only a third of a season's work, and the
+integer division means tiers 1–2 do nothing at all for the season band. Counsel is six
+tiers (30 → 700 ørlǫg) and reads `${4+t} errands at a time`, i.e. it already starts at 4.
+
+**The ask.** Counsel's own line begins at **1**, and the day's work, the season's work and
+the charges each get a line of their own rather than riding on Counsel's fractions.
+
+**Worth deciding first:** whether a band starting at 1 means the early hall sees one
+errand at a time (a real slowdown — `BAND.base` is what a fresh hall gets, and `reckon`
+reseeds `ch` from `bandCap`), or whether the *line* starts at 1 while the base stays
+where it is. These give very different early games.
+
+## 34. 🔴 Charts are lost at every reckoning and no line carries them
+
+**Rakel:** *"Charts must be included in ørlǫg lines and prestige carry overs."*
+
+**How it stands.** Charted waters live in `s.opened`. `reckon()` builds the next age from
+`fresh()` and **never copies it** — so every chart burns, always. Nothing mitigates this:
+
+- `shelterables()` offers only **crew · item · lore · way**. A chart cannot be sheltered.
+- No ørlǫg line touches them. The nearest are `strand` (ships held), `hearth` (silver),
+  `hoard` (rare things) and `blood` (craft levels).
+
+And they are slow to win back: `rollHaul` gives a chart only from the **frontier port of a
+sea you can already sail**, at `min(0.5, 0.20 + luck*0.12)` — so re-opening the map is
+several voyages per water, every age, before the far markets and their better prices are
+reachable again.
+
+**The ask.** Charts carry through — by an ørlǫg line, by being shelterable, or both.
+
+**Worth deciding first:** all-or-nothing (a line that keeps every chart) versus graded
+(keep the first N waters, or every port up to a reach). Graded fits the other lines
+better — `hoard` and `hearth` both work in tiers — but all-or-nothing is what stops the
+map being re-sailed from scratch each age.
+
+## 35. ✅ Market: refresh rules, the ¾ sell rule, and dumping rares at the first stall
+
+**Rakel:** *"Sell offers should be added, buy offers refreshed. The 3/4 rule needs
+rethinking. You can still sell all rare materials at the first market."*
+
+Three separate things in `marketOffers` / `openMarket` / `sellRare`:
+
+**a) Landing again concatenates everything.** #8 (v0.17.17) changed re-landing from
+wiping the market to appending — but it appends *both* kinds:
+
+```js
+ex.left += add; ex.offers = ex.offers.concat(offers);
+```
+
+The ask is to split the rule: **sell offers accumulate** (more stalls willing to take your
+surplus) while **buy offers refresh** (the same goods restocked, not a growing pile of
+duplicates).
+
+**b) The ¾ rule.** Each sell offer is sized to your current stores:
+
+```js
+qty = min(floor(res[k]), max(5, floor(res[k]*0.75)))
+```
+
+So one trade always clears about three-quarters of a material, and the offer is bigger
+the more you hold — the sink scales with the surplus instead of the market's size. Needs
+rethinking; `marketWealth(p)` and `reach` are the natural things to size it by, as the
+buy side already does.
+
+**c) Rares have no gate at all.** The rare rows are built from `COMP.filter(k=>s.res[k]>0)`
+with a `sell one` button, and `sellRare` only checks you hold at least one. Nothing caps
+how many times you press it, and nothing ties it to the market's size — so the whole
+hoard can go at the **home** kaupstefna, one tap at a time, defeating the far-markets-pay-
+better rule that `rarePrice` implements (`marketWealth(p)` × spread by `reach`).
+
+**Fixed (v0.17.31), all three — see #39 for the time cap they were done alongside.**
+
+**(a) Buys restocked, sells gathered but bounded.** Re-landing keeps the sell stalls and
+replaces the buy stalls: `keptSells.slice(-room).concat(offers)`. Sells still accumulate
+as intended, but only to `sellCap(p)` — `(reach===0?2:3+reach)*4`, so **8** at the coast,
+16 west/north, 20 east. The oldest go first: they are stalest, and priced to stores you
+may no longer hold.
+
+**(b) A stall buys what its purse allows.** The ¾ rule is gone. Each sell offer now draws
+on `purse = 220 · wealth · (0.75 + rnd·0.6)` silver and takes `min(what you hold,
+purse/WORTH[k])`, floor 5. The market is the measure, not your barn — the sink no longer
+grows with the surplus it exists to drain. Cheap bulk still moves in quantity (a coast
+stall takes ~600 timber), and a rich water absorbs far more (Miklagarðr will take ~2000
+food in one offer).
+
+**(c) A market's appetite for rare things is finite.** `rareCap(p)` — **3** at the coast,
+6 west/north, **9** at Miklagarðr — held on the market as `rareLeft`, decremented by
+`sellRare`, and topped up by one (to the cap) on each fresh landing. The panel says how
+many more it will take and greys the button at zero. Saves made before this build have no
+`rareLeft`; `rareLeftOf` treats a missing value as a full cap, so they behave as new ones.
+
+This makes carrying rares outward the point rather than a rounding error — the same visit
+with silk in hand is worth **504 silver at the Coastal run and 6,048 at Miklagarðr**, a
+twelvefold difference from price and appetite together.
+
+The home bulk-ivory offer from #8 (≤15 ivory at 50 silver each) is **kept** — it is a
+deliberate, already-capped sink for the northern water's glut, and separate from the
+one-at-a-time `sellRare` path this closes.
+
+---
+
+## 36. 🔴 The Work panel reorders itself after a reckoning
+
+**Rakel:** *"After prestiging the skills are in a different order."*
+
+**Cause.** The Work panel deliberately orders both works and crafts by **when you unlocked
+them** — `rev(a)=s.unlocked.indexOf(a)`, and `craftRev(sk)` = the earliest such index for
+that craft — so that a newly opened work appends at the bottom and nothing already on
+screen shifts. That intent is sound *within* an age.
+
+But `reckon()` rebuilds the list wholesale:
+
+```js
+N.unlocked=Object.keys(ACT);   // "an age that skips the road must open them itself"
+```
+
+`Object.keys(ACT)` is **declaration order**, which is not the road order. Every tier
+comes out differently:
+
+| tier | first age | after an age |
+|---|---|---|
+| Raw | Foraging · Woodcraft · Fishing · Husbandry · Mining | Foraging · Fishing · Woodcraft · Mining · Husbandry |
+| Processed | Preserving · Weaving · Smithing | Smithing · Weaving · Preserving |
+| Product | Cooking · Sailmaking · Shipwright | Shipwright · Cooking · Sailmaking |
+
+Processed reverses outright. The works *within* each craft move too — the road opens
+`hew` before `fell`, `tend` before `herd`, and declaration order does not always agree.
+
+**Worth deciding first: which order should win.** Note the "nothing shifts as things open"
+rationale does **not** apply after a reckoning — everything is unlocked at once, so there
+is no opening to protect. Either is therefore safe:
+
+- **Reproduce the road order** — later ages look exactly like the first. Needs the road
+  order as data both `INTRO` and `reckon` read, rather than one being a side effect of
+  the other.
+- **Make the panel order canonical** — sort by `SK`/`ACT` order always and drop `rev`
+  entirely. Tidier and self-consistent, but the first age would then reshuffle as works
+  open, which is the thing `rev` exists to prevent.
+
+The first keeps both properties; the second is less code.
+
+---
+
+## 37. 🔴 More than one of your people should come through the fire, eventually
+
+**Rakel:** *"At some point you should be allowed to bring more crew after prestiging."*
+
+**How it stands.** `CREW_THROUGH = 1`, a plain constant, enforced in two places — the
+pick guard (*"Only one of your people can be hidden in the tree"*) and `reckon`, which
+slices the sheltered crew to that number. **Nothing raises it.** Every other shelter limit
+grows:
+
+| limit | grows with |
+|---|---|
+| things sheltered in all | `min(6, 1 + age + TIER(memory))` — age *and* Long memory |
+| what a sheltered hand keeps | `through` — 50 · 65 · 80 · 95% of what she knew |
+| rare things carried | `hoard` — 0 · 2 · 5 |
+| ships held at the start | `strand` — 1 · 2 · 3 · 4 |
+| **people carried** | **nothing — always 1** |
+
+So by a late age you may shelter six things and keep 95% of one woman's craft, but never
+a second woman. The named crew are the only part of a hall that cannot be invested in
+across ages.
+
+**Worth deciding first: what raises it.** Three shapes, and they play differently:
+
+- **Its own ørlǫg line** — clean, explicit, priced on its own curve. Most consistent with
+  `strand` and `hoard`.
+- **Fold it into `through`** — that line already governs sheltered folk, so higher tiers
+  could carry a second and third. No new line to price, but it bundles "how much she
+  keeps" with "how many come", which are different decisions.
+- **Let `memory` cover it** — simplest, but then people and things compete for the same
+  slots, and a hand is worth far more than an amulet.
+
+Also note `SHELTER_MAX = 6` caps the total, so more people would eat into what else can
+come through unless that rises too — which may be exactly the trade you want.
+
+---
+
+## 38. 🔴 Mark tiers stop well short of what the game can reach
+
+**Rakel:** *"Mark tiers must be fully developed, some stop very early."*
+
+**Measured.** Marks whose subject has a real ceiling, top tier against what is actually
+reachable:
+
+| mark | tiers | top | reachable | uses |
+|---|---|---|---|---|
+| Rune-reader | 4 | 30 | **65** lore pieces | 46% |
+| Master of one | 4 | 45 | **100** (`MAX_LEVEL`) | 45% |
+| Ørlǫg-rich | 4 | 25 | **42** ørlǫg tiers | 60% |
+| Way-wise | **3** | 18 | **28** recipes | 64% |
+| Hall-raiser | **3** | 6 | **9** hall levels | 67% |
+| Broad-handed | **3** | 9 | **11** crafts | 82% |
+| Well-girt | 4 | 40 | 40 slots (you + 9 crew) | 100% ✔ |
+
+Only Well-girt actually runs to the end. **Master of one** tops out at level 45 while a
+craft can reach 100 — so the whole back half of levelling earns no mark at all. **Rune-
+reader** stops at 30 of 65 pieces of lore, and three marks have only **three** tiers where
+every other mark has four.
+
+The rest (timber cut, food, silver, voyages, and so on) are open-ended totals with no
+ceiling to measure against — they may still want a fifth tier, but nothing says they are
+short the way these do.
+
+**Worth deciding first: what "fully developed" means.**
+
+- **Reach the ceiling** — the top tier lands on the real maximum (best 100, ways 28,
+  broad 11, hall 9, lore 65, ørlǫg 42). Clean, but a top tier that demands *everything*
+  is a different kind of goal from one that demands a lot.
+- **Land just short** — top tier at ~80–90% of the ceiling, as most sit now, but the
+  short ones brought up to match.
+- **Uniform tier count** — the three-tier marks (Way-wise, Hall-raiser, Broad-handed)
+  gain a fourth so every mark has the same shape.
+
+Also worth checking when this is done: `markReady`/`claimMark` and the ørlǫg they pay,
+so added tiers do not quietly change the ørlǫg economy that #33–#37 also touch.
+
+---
+
+## 39. ✅ A market never closes once you have a few ships, and its offers pile up
+
+**Rakel:** *"Markets need a time cap. With multiple ships at lower sailing times and auto
+sail the market stays up forever. Maybe it helps with buy offers refreshing, right now I
+have over 50 buy offers."*
+
+**Cause.** `openMarket` adds time on every landing with **no ceiling**:
+
+```js
+ex.left += add;  ex.offers = ex.offers.concat(offers);
+```
+
+`add = marketMins(p) = round(4 + p.mins*1.5)`. A market drains one minute per minute, so
+it never closes once landings arrive faster than that — and with a hand on the tiller they
+arrive by themselves.
+
+**Measured** (longship, `VOY_SCALE` 16):
+
+| port | round trip | adds | ships to never close | offers each landing |
+|---|---|---|---|---|
+| Coastal run | 15m | 6m | **3** | 4 (2 sell + 2 buy) |
+| The skerries | 23m | 7m | **4** | 4 |
+| The far fjords | 31m | 8m | **4** | 4 |
+| Kaupang | 39m | 10m | **4** | 4 |
+| The isles | 36m | 9m | 5 | 7 (4 sell + 3 buy) |
+| Miklagarðr | 124m | 22m | 6 | 9 (5 sell + 4 buy) |
+
+**All four home waters are already permanent at four ships** — which is what the slipway
+holds now. The far ports need five or six, so they go permanent too as the strand widens.
+
+And because the same call concatenates offers, a permanent market is also an **unbounded
+list**. At the Coastal run with four longships that is ~16 landings an hour, so **~32 buy
+offers and ~32 sell offers an hour, for ever**. Over 50 buy offers is exactly on curve.
+
+**Two things, and they want fixing together:**
+
+1. **Cap `left`.** Something like `min(cap, left + add)` — the cap presumably a multiple of
+   `marketMins(p)` so far ports still stay open longer than the coast.
+2. **Refresh buys instead of appending** — already logged as **#35(a)**. That alone bounds
+   the buy list; the sell side is meant to accumulate, so it needs the cap in (1) or a
+   count limit of its own to stop growing without end.
+
+**Worth deciding first:** whether a market should be closable at all while you keep
+landing there. A hard cap means a busy port shuts under you mid-trade; a cap on *offers*
+with uncapped time keeps it open but bounded. The second is gentler and probably what the
+"never wipe what is there" rule from #8 was reaching for.
+
+**Fixed (v0.17.31) — both, since capping one without the other only changes which list
+grows.** Rakel's call: reduce the time a fresh landing adds while the market is already
+open, rather than let it bank hours.
+
+**Time.** A landing now adds `add · max(0.2, 1 − left/cap)` and is clamped to
+`marketCapMs(p) = marketMins(p) · 3` — three markets' worth. The top-up shrinks as the
+market fills, so it approaches the ceiling and settles rather than climbing. It still
+never closes under you while you keep landing; it simply stops banking. At the Coastal
+run, repeated landings:
+
+| landing | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| open for | 6.0m | 10.0m | 12.7m | 14.4m | 15.6m | 16.8m | 18.0m | 18.0m |
+| offers | 5 | 8 | 10 | 10 | 10 | 10 | 10 | 10 |
+
+The log says so plainly when it is full: *"Fresh stalls at the kaupstefna at the Coastal
+run — it can stand no longer than it does."*
+
+**Offers.** Bounded by #35(a) above — buys restocked rather than doubled, sells capped at
+`sellCap(p)`. The pile-up that produced **over 50 buy offers** now settles at **2 buy and
+8 sell** at a home port, and cannot exceed it however long the market stands.
+
+---
+
 *Add new bugs above this line as they come in.*

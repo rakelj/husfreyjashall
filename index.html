@@ -585,11 +585,11 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.30";
-const BUILT="02 Aug 2026 · 10:47 UTC";
+const BUILD="v0.17.31";
+const BUILT="02 Aug 2026 · 21:48 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed.
 // BUILD, BUILT and NOTES move together — a stamp without the other two is a lie.
-const NOTES="The Sea tab now shows a dot when a ship is home and wanting unloading — it had been drawn and then wiped again in the same breath. The kaupstefna mark sits on its own line above the name, and neither it nor any dot is lost against the tab you are standing on.";
+const NOTES="The kaupstefna is bounded now. Buy stalls are restocked rather than doubled, sell stalls gather but no longer without end, and landing again while it is open adds less the fuller it stands — three markets' worth and no more. A stall buys what its own purse allows instead of three quarters of your barn, and no market will take more rare things than its water can bear: three at the coast, nine at Miklagarðr, which is where they were always worth carrying.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1655,19 +1655,35 @@ function buildShip(tier){const s=S; const d=shipDef(tier); if(!d)return;
    too. Each offer is one-shot, so it is a place to turn a surplus, never a conversion engine. */
 const marketMins=p=>Math.round(4+p.mins*1.5);                 // ~6 min at the coast, ~22 at Miklagarðr
 const marketWealth=p=>1+seaDef(p.sea).reach*0.8+portsBySea(p.sea).indexOf(p)*0.3;   // ~1 (coast) .. ~3.5 (Miklagarðr)
+/* A kaupstefna cannot stand for ever. Landing again while it is open tops it up, but by
+   less the fuller it already is, and never past three markets' worth — otherwise a strand
+   of fast ships banks hours of trading and the stalls never strike camp. */
+const marketCapMs=p=>marketMins(p)*3*60000;
+/* And it will only take so many rare things. A coast village cannot absorb a hall's
+   hoard of silk; that is what the long waters are for. */
+const rareCap=p=>{const r=seaDef(p.sea).reach; return r===0?3:3+r*3;};   // home 3 · west/north 6 · east 9
+const rareLeftOf=(mk,p)=>mk.rareLeft===undefined?rareCap(p):mk.rareLeft;
+/* Sell stalls accumulate as you land again — but only so far. Without this the list is
+   merely a slower version of the old one: four ships at the coast laid out some fifty
+   offers an hour and the panel became a wall you scrolled rather than a market you read.
+   The oldest go first; they are the stalest, and priced to stores you no longer hold. */
+const sellCap=p=>{const r=seaDef(p.sea).reach; return (r===0?2:3+r)*4;}; // home 8 · west/north 16 · east 20
 function marketOffers(s,p){
  const reach=seaDef(p.sea).reach;
  const wealth=marketWealth(p), spread=Math.max(0.12,0.30-0.05*reach);   // farther out pays better both ways
  const pick=a=>a[Math.floor(Math.random()*a.length)];
  const offers=[], used={};
- // sell offers take about ¾ of what your stores hold of a material, priced to that
- // amount — a sink for your surplus. Richer the farther out: more stalls, better pay.
+ // A stall buys what its own purse allows, not what your barn happens to hold. It used to
+ // take ¾ of your stores whatever they were, so the sink grew with the surplus it was
+ // meant to drain and one trade at a great hall moved thousands. Now the market is the
+ // measure: a richer water lays out more silver, and you can only sell what you have.
  const nSell=reach===0?2:3+reach;                                       // home 2 · west/north 4 · east 5
  const held=RES.filter(k=>k!=="silver"&&WORTH[k]&&(s.res[k]||0)>=6);
  for(let n=0;n<nSell;n++){
   const poolK=held.filter(k=>!used[k]); if(!poolK.length)break;
   const k=pick(poolK); used[k]=1;
-  const qty=Math.min(Math.floor(s.res[k]),Math.max(5,Math.floor((s.res[k]||0)*0.75)));
+  const purse=220*wealth*(0.75+Math.random()*0.6);                      // silver this stall will lay out
+  const qty=Math.max(5,Math.min(Math.floor(s.res[k]),Math.round(purse/WORTH[k])));
   offers.push({kind:"sell",res:k,qty,silver:Math.max(1,Math.round(WORTH[k]*qty*(1-spread-Math.random()*0.08)))});
  }
  // buys — more variety the farther out too
@@ -1685,11 +1701,23 @@ function marketOffers(s,p){
 function openMarket(s,portId){ const p=portDef(portId); if(!p)return;
  const add=marketMins(p)*60000, offers=marketOffers(s,p);
  const ex=s.markets.find(m=>m.port===portId);
- if(ex){ // landing again while it is still open adds to the time and to the stalls, never wipes what is there
-  ex.left+=add; ex.offers=ex.offers.concat(offers);
-  log(`Fresh stalls at the kaupstefna at ${p.en}, and longer to trade.`,"y"); toast("The kaupstefna grows: "+p.en);
+ if(ex){
+  // Landing again never wipes what is there, but it no longer simply piles up either:
+  //  · what you may SELL accumulates — more stalls willing to take your surplus
+  //  · what you may BUY is restocked, not doubled — the same goods, freshly laid out
+  //  · the time it adds shrinks as the market fills, and stops at three markets' worth
+  const cap=marketCapMs(p);
+  const gain=Math.round(add*Math.max(0.2,1-ex.left/cap));
+  const was=ex.left; ex.left=Math.min(cap,ex.left+gain);
+  const keptSells=ex.offers.filter(o=>o.kind==="sell"), fresh=offers.filter(o=>o.kind==="sell");
+  const room=Math.max(0,sellCap(p)-fresh.length);
+  ex.offers=keptSells.slice(-room).concat(offers);
+  ex.rareLeft=Math.min(rareCap(p),rareLeftOf(ex,p)+1);   // a little more appetite for rare things
+  log(ex.left>was?`Fresh stalls at the kaupstefna at ${p.en}, and longer to trade.`
+                 :`Fresh stalls at the kaupstefna at ${p.en} — it can stand no longer than it does.`,"y");
+  toast("The kaupstefna grows: "+p.en);
  } else {
-  s.markets.push({port:portId,left:add,offers});
+  s.markets.push({port:portId,left:add,offers,rareLeft:rareCap(p)});
   log(`The kaupstefna at ${p.en} is open — ${marketMins(p)} minutes to trade.`,"y"); toast("A kaupstefna is open: "+p.en);
  }
 }
@@ -1707,7 +1735,11 @@ function doTrade(mi,oi){const s=S,mk=s.markets[mi]; if(!mk)return; const o=mk.of
 // rare things brought home can be sold (never bought); a richer market pays far more
 const rarePrice=(s,p,k)=>Math.round(RARE_WORTH[k]*marketWealth(p)*(1-Math.max(0.12,0.30-0.05*seaDef(p.sea).reach)));
 function sellRare(mi,k){const s=S,mk=s.markets[mi]; if(!mk)return; if((s.res[k]||0)<1){toast("You have none to sell");return;}
- const p=portDef(mk.port), amt=rarePrice(s,p,k);
+ const p=portDef(mk.port);
+ // a market's appetite for rare things is finite — carry the rest to a richer water
+ if(rareLeftOf(mk,p)<=0){toast(`${p.en} will take no more rare things`);return;}
+ mk.rareLeft=rareLeftOf(mk,p)-1;
+ const amt=rarePrice(s,p,k);
  s.res[k]-=1; give(s,"silver",amt);
  log(`Sold ${CN[k].toLowerCase()} at ${p.en} for ${amt} silver.`,"g"); toast(`+${amt} silver`);
  maybeDraw();
@@ -2043,10 +2075,11 @@ function view_sea(s){
  // ── the kaupstefna: only open where you have just landed, and only for a while ──
  if(s.markets.length){
   s.markets.forEach((mk,mi)=>{ const p=portDef(mk.port);
+   const rl=rareLeftOf(mk,p);
    const rareRows=COMP.filter(k=>s.res[k]>0).map(k=>
      `<div class="row"><span>Sell <b>${CN[k]}</b> <span class="mono sub">×${s.res[k]}</span>
         <div class="sub">${rarePrice(s,p,k)} silver each${seaDef(p.sea).reach>=1?" · a rich market pays well":""}</div></span>
-       <button class="take" data-sellrare="${mi}|${k}">sell one</button></div>`).join("");
+       <button class="${rl>0?"take":""}" data-sellrare="${mi}|${k}" ${rl>0?"":"disabled"}>sell one</button></div>`).join("");
    h+=sect(s,"mk_"+mk.port,`Kaupstefna — ${p.en}`,`open <span id="mkt${mi}">${dur(mk.left)}</span>`,
     (mk.offers.length?mk.offers.map((o,oi)=>{
       const can=o.kind==="sell"?(s.res[o.res]||0)>=o.qty:s.res.silver>=o.silver;
@@ -2054,8 +2087,9 @@ function view_sea(s){
         <div class="sub">${o.kind==="sell"?`they give ${o.silver} silver · you have ${f(s.res[o.res]||0)}`:`they ask ${o.silver} silver`}</div></span>
         <button class="${o.kind==="sell"&&can?"take":""}" data-trade="${mi}|${oi}" ${can?"":"disabled"}>${o.kind==="sell"?"sell":"buy"}</button></div>`;
     }).join(""):`<div class="note">The stalls are traded out.</div>`)
-    +(rareRows?`<div class="sub" style="color:var(--gold);margin:7px 0 2px">Rare things you have brought home</div>`+rareRows:"")
-    +`<div class="note" style="margin-top:5px">Rare things can be sold here but never bought — the sea is their only source. The stalls close when the market's time runs out.</div>`,
+    +(rareRows?`<div class="sub" style="color:${rl>0?"var(--gold)":"var(--rust)"};margin:7px 0 2px">Rare things you have brought home — ${
+       rl>0?`this market will take ${rl} more`:`this market will take no more`}</div>`+rareRows:"")
+    +`<div class="note" style="margin-top:5px">Rare things can be sold here but never bought — the sea is their only source. A richer water pays far more for them, and will take more before it has had its fill. The stalls close when the market's time runs out.</div>`,
     true);
   });
  }
@@ -2470,7 +2504,7 @@ function stateSig(){const s=S;
  return [tab,s.unlocked.join(""),s.crew.length,s.items.length,s.known.join(""),s.intro,s.hall,
   // what each ship still lacks rides in the signature, so the mend notice and its
   // button follow the sailcloth and the hone — neither of which is tracked elsewhere
-  s.fleet.map(sh=>sh.tier+Math.round(sh.cond/5)+mendShort(s,sh).map(k=>k[0]).join("")).join(",")+"|"+s.trips.map(t=>t.ship+t.dest+(t.home?"H":"")).join(",")+"|"+Object.keys(s.opened||{}).length+"|"+s.markets.map(mk=>mk.port+mk.offers.map(o=>o.kind+o.res+o.qty).join("")).join(";"),s.act,
+  s.fleet.map(sh=>sh.tier+Math.round(sh.cond/5)+mendShort(s,sh).map(k=>k[0]).join("")).join(",")+"|"+s.trips.map(t=>t.ship+t.dest+(t.home?"H":"")).join(",")+"|"+Object.keys(s.opened||{}).length+"|"+s.markets.map(mk=>mk.port+"r"+(mk.rareLeft===undefined?"-":mk.rareLeft)+mk.offers.map(o=>o.kind+o.res+o.qty).join("")).join(";"),s.act,
   s.crew.map(c=>c.sk+c.act+c.capL+cL(c,c.sk)+Object.values(c.eq).map(x=>x?x.rec:"-").join("")).join("/"),
   Object.values(s.eq).map(x=>x?x.rec:"-").join(""),
   Object.keys(SK).map(k=>myL(s,k)).join(".")+"/"+softCap(s),
