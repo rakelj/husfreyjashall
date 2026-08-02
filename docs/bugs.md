@@ -564,4 +564,57 @@ so the done button keeps its pointer affordance.
 
 ---
 
+## 30. ✅ "Mend her" offered itself, then refused — the notice counted only the hull
+
+**Reported:** *"Somethings wrong with mending ships, sailcloths."* Screenshot: *"Mending
+wants 2 hull — you have 111"* with a live **mend her** button, which on tapping only
+answered *"4 sailcloth to mend her"* — and Sailcloth was 0.
+
+**Cause.** Mending wants three things:
+
+```js
+const want=Math.min(8,Math.ceil((100-sh.cond)/5));      // hull
+const cloth=Math.max(2,Math.round(want*2.2));            // sailcloth
+const stone=want>=6?1:0;                                 // Eidsborg hone
+```
+
+The panel worked the hull out **a second time, on its own**, and knew nothing of the
+other two — so the notice named only the hull and the button's `disabled` test was
+`s.res.hull>=want`. Everything the hall was short of only surfaced as a toast *after* the
+tap. Exactly the "two heuristics answering the same question" trap in handover §3.
+
+**Fix (v0.17.29).** One `mendNeed(sh)` returns all three; `mendShip`, the notice and the
+button all read it. The notice names each want and reddens what is short:
+
+| her state | reads | button |
+|---|---|---|
+| 91/100, no sailcloth | Mending wants 2 hull · **4 sailcloth — you have 0** | disabled |
+| 60/100, no sailcloth | Mending wants 8 hull · **18 sailcloth — you have 0** · 1 eidsborg hone | disabled |
+| 60/100, stocked | Mending wants 8 hull · 18 sailcloth · 1 eidsborg hone | enabled |
+
+`stateSig` also now carries what each ship lacks — neither sailcloth nor the hone was
+tracked in it, so the notice would have sat stale until something unrelated forced a
+redraw.
+
+## 31. ✅ The tab dot is invisible on the tab you are on
+
+**Reported alongside:** *"add a dot to the sea tab when a ship is back and ready for
+unloading."*
+
+**Already there, and correct** — `paint()` sets a gold dot on Sea whenever
+`s.trips.some(t=>t.home)`. Verified against the real expression: gold dot when a ship is
+home (including when one of several is home, and in preference to the rust stalled-ship
+dot), nothing while all are at sea.
+
+**The real defect** is that `.dot` is gold and `#tabs button.on` is *also* gold — so the
+dot cannot be seen on whichever tab is open. That hides it on every tab, not just Sea.
+Fixed by darkening the dot on the active tab. The rust variant sets its colour inline, so
+it was always visible and is unaffected.
+
+Two other reasons a home ship might show no dot, both working as intended: **a hand on
+the tiller** lands her automatically (`land(ti)` the same tick she arrives), and the dot
+clears the moment she is unloaded.
+
+---
+
 *Add new bugs above this line as they come in.*
