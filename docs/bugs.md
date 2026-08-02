@@ -655,4 +655,91 @@ clears the moment she is unloaded.
 
 ---
 
+## 33. ☐ OPEN — Counsel should start at 1, and each task band wants its own line
+
+**Rakel:** *"Ørlǫg line for counsel should start at 1 and there should be similar lines for
+the other task types."*
+
+**How it stands.** One line, `counsel`, drives three of the four bands at once — and the
+fourth not at all:
+
+| band | `BAND.base` | `bandCap` | counsel's effect |
+|---|---|---|---|
+| Errands (`er`) | 4 | `4 + TIER(counsel)` | +1 per tier |
+| The day's work (`dy`) | 3 | `3 + floor(TIER/2)` | +1 every **2** tiers |
+| The season's work (`se`) | 2 | `2 + floor(TIER/3)` | +1 every **3** tiers |
+| Ancestral charges (`ch`) | 3 | `3` — flat | **none** |
+
+So a tier of Counsel buys a whole errand but only a third of a season's work, and the
+integer division means tiers 1–2 do nothing at all for the season band. Counsel is six
+tiers (30 → 700 ørlǫg) and reads `${4+t} errands at a time`, i.e. it already starts at 4.
+
+**The ask.** Counsel's own line begins at **1**, and the day's work, the season's work and
+the charges each get a line of their own rather than riding on Counsel's fractions.
+
+**Worth deciding first:** whether a band starting at 1 means the early hall sees one
+errand at a time (a real slowdown — `BAND.base` is what a fresh hall gets, and `reckon`
+reseeds `ch` from `bandCap`), or whether the *line* starts at 1 while the base stays
+where it is. These give very different early games.
+
+## 34. ☐ OPEN — Charts are lost at every reckoning and no line carries them
+
+**Rakel:** *"Charts must be included in ørlǫg lines and prestige carry overs."*
+
+**How it stands.** Charted waters live in `s.opened`. `reckon()` builds the next age from
+`fresh()` and **never copies it** — so every chart burns, always. Nothing mitigates this:
+
+- `shelterables()` offers only **crew · item · lore · way**. A chart cannot be sheltered.
+- No ørlǫg line touches them. The nearest are `strand` (ships held), `hearth` (silver),
+  `hoard` (rare things) and `blood` (craft levels).
+
+And they are slow to win back: `rollHaul` gives a chart only from the **frontier port of a
+sea you can already sail**, at `min(0.5, 0.20 + luck*0.12)` — so re-opening the map is
+several voyages per water, every age, before the far markets and their better prices are
+reachable again.
+
+**The ask.** Charts carry through — by an ørlǫg line, by being shelterable, or both.
+
+**Worth deciding first:** all-or-nothing (a line that keeps every chart) versus graded
+(keep the first N waters, or every port up to a reach). Graded fits the other lines
+better — `hoard` and `hearth` both work in tiers — but all-or-nothing is what stops the
+map being re-sailed from scratch each age.
+
+## 35. ☐ OPEN — Market: refresh rules, the ¾ sell rule, and dumping rares at the first stall
+
+**Rakel:** *"Sell offers should be added, buy offers refreshed. The 3/4 rule needs
+rethinking. You can still sell all rare materials at the first market."*
+
+Three separate things in `marketOffers` / `openMarket` / `sellRare`:
+
+**a) Landing again concatenates everything.** #8 (v0.17.17) changed re-landing from
+wiping the market to appending — but it appends *both* kinds:
+
+```js
+ex.left += add; ex.offers = ex.offers.concat(offers);
+```
+
+The ask is to split the rule: **sell offers accumulate** (more stalls willing to take your
+surplus) while **buy offers refresh** (the same goods restocked, not a growing pile of
+duplicates).
+
+**b) The ¾ rule.** Each sell offer is sized to your current stores:
+
+```js
+qty = min(floor(res[k]), max(5, floor(res[k]*0.75)))
+```
+
+So one trade always clears about three-quarters of a material, and the offer is bigger
+the more you hold — the sink scales with the surplus instead of the market's size. Needs
+rethinking; `marketWealth(p)` and `reach` are the natural things to size it by, as the
+buy side already does.
+
+**c) Rares have no gate at all.** The rare rows are built from `COMP.filter(k=>s.res[k]>0)`
+with a `sell one` button, and `sellRare` only checks you hold at least one. Nothing caps
+how many times you press it, and nothing ties it to the market's size — so the whole
+hoard can go at the **home** kaupstefna, one tap at a time, defeating the far-markets-pay-
+better rule that `rarePrice` implements (`marketWealth(p)` × spread by `reach`).
+
+---
+
 *Add new bugs above this line as they come in.*
