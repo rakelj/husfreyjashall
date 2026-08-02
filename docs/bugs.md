@@ -742,4 +742,46 @@ better rule that `rarePrice` implements (`marketWealth(p)` × spread by `reach`)
 
 ---
 
+## 36. ☐ OPEN — The Work panel reorders itself after a reckoning
+
+**Rakel:** *"After prestiging the skills are in a different order."*
+
+**Cause.** The Work panel deliberately orders both works and crafts by **when you unlocked
+them** — `rev(a)=s.unlocked.indexOf(a)`, and `craftRev(sk)` = the earliest such index for
+that craft — so that a newly opened work appends at the bottom and nothing already on
+screen shifts. That intent is sound *within* an age.
+
+But `reckon()` rebuilds the list wholesale:
+
+```js
+N.unlocked=Object.keys(ACT);   // "an age that skips the road must open them itself"
+```
+
+`Object.keys(ACT)` is **declaration order**, which is not the road order. Every tier
+comes out differently:
+
+| tier | first age | after an age |
+|---|---|---|
+| Raw | Foraging · Woodcraft · Fishing · Husbandry · Mining | Foraging · Fishing · Woodcraft · Mining · Husbandry |
+| Processed | Preserving · Weaving · Smithing | Smithing · Weaving · Preserving |
+| Product | Cooking · Sailmaking · Shipwright | Shipwright · Cooking · Sailmaking |
+
+Processed reverses outright. The works *within* each craft move too — the road opens
+`hew` before `fell`, `tend` before `herd`, and declaration order does not always agree.
+
+**Worth deciding first: which order should win.** Note the "nothing shifts as things open"
+rationale does **not** apply after a reckoning — everything is unlocked at once, so there
+is no opening to protect. Either is therefore safe:
+
+- **Reproduce the road order** — later ages look exactly like the first. Needs the road
+  order as data both `INTRO` and `reckon` read, rather than one being a side effect of
+  the other.
+- **Make the panel order canonical** — sort by `SK`/`ACT` order always and drop `rev`
+  entirely. Tidier and self-consistent, but the first age would then reshuffle as works
+  open, which is the thing `rev` exists to prevent.
+
+The first keeps both properties; the second is less code.
+
+---
+
 *Add new bugs above this line as they come in.*
