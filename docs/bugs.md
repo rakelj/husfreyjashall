@@ -784,4 +784,40 @@ The first keeps both properties; the second is less code.
 
 ---
 
+## 37. ☐ OPEN — More than one of your people should come through the fire, eventually
+
+**Rakel:** *"At some point you should be allowed to bring more crew after prestiging."*
+
+**How it stands.** `CREW_THROUGH = 1`, a plain constant, enforced in two places — the
+pick guard (*"Only one of your people can be hidden in the tree"*) and `reckon`, which
+slices the sheltered crew to that number. **Nothing raises it.** Every other shelter limit
+grows:
+
+| limit | grows with |
+|---|---|
+| things sheltered in all | `min(6, 1 + age + TIER(memory))` — age *and* Long memory |
+| what a sheltered hand keeps | `through` — 50 · 65 · 80 · 95% of what she knew |
+| rare things carried | `hoard` — 0 · 2 · 5 |
+| ships held at the start | `strand` — 1 · 2 · 3 · 4 |
+| **people carried** | **nothing — always 1** |
+
+So by a late age you may shelter six things and keep 95% of one woman's craft, but never
+a second woman. The named crew are the only part of a hall that cannot be invested in
+across ages.
+
+**Worth deciding first: what raises it.** Three shapes, and they play differently:
+
+- **Its own ørlǫg line** — clean, explicit, priced on its own curve. Most consistent with
+  `strand` and `hoard`.
+- **Fold it into `through`** — that line already governs sheltered folk, so higher tiers
+  could carry a second and third. No new line to price, but it bundles "how much she
+  keeps" with "how many come", which are different decisions.
+- **Let `memory` cover it** — simplest, but then people and things compete for the same
+  slots, and a hand is worth far more than an amulet.
+
+Also note `SHELTER_MAX = 6` caps the total, so more people would eat into what else can
+come through unless that rises too — which may be exactly the trade you want.
+
+---
+
 *Add new bugs above this line as they come in.*
