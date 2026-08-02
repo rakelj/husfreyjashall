@@ -484,4 +484,41 @@ changes how the game *feels*, so it stays as-is until asked for.
 
 ---
 
+## 28. ✅ The one-tap "give her the tool" button on the crew card (#13 was never finished)
+
+**Reported:** *"Still get the button to give the crew equipment."*
+
+**Cause.** #13 asked for the shortcut equips to go — *"crew equipment, and the player's on
+the Work panel"*. Two were dealt with:
+
+- Work panel quick-equip — **removed** (v0.17.11)
+- Crew slot picker — **kept** deliberately, with a gold `best` mark (v0.17.12)
+
+But a **third** one was never touched: the crew card's own gold notice carried a one-tap
+`give her the horn comb` button, which fits the item without ever opening the slot. It
+predates the whole bug list, so nothing in the #13 work went near it — it was simply
+missed.
+
+**Fix (v0.17.26).** Button removed; the notice now *names* what is waiting, exactly the
+resolution used for the player's Work panel. The fitting is done in the slot, where the
+`best` mark already points at the right pick:
+
+| case | reads |
+|---|---|
+| empty slot | Her tool slot is empty — a horn comb lies in the pile, ready to fit. |
+| better available | A broad axe in the pile would better what he holds. |
+| wrong craft | She is holding an antler pick, which is no use to her — a horn comb lies in the pile. |
+
+**Verified:** no one-tap give buttons remain; `data-eq` now has a single entry point (the
+picker), so its handler is still needed and still works. Article and pronoun agreement
+checked across slots and both genders.
+
+**Note on the report:** the screenshot was **v0.17.4** (31 Jul) on a second, fresh hall —
+a build old enough to predate the service worker (#25, v0.17.13), so that install has no
+way to update itself and is stuck. The button was genuinely still on `main` too, so the
+report stands on its own; but that device needs a manual re-add before it sees any of
+this.
+
+---
+
 *Add new bugs above this line as they come in.*
