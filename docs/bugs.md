@@ -820,4 +820,45 @@ come through unless that rises too — which may be exactly the trade you want.
 
 ---
 
+## 38. ☐ OPEN — Mark tiers stop well short of what the game can reach
+
+**Rakel:** *"Mark tiers must be fully developed, some stop very early."*
+
+**Measured.** Marks whose subject has a real ceiling, top tier against what is actually
+reachable:
+
+| mark | tiers | top | reachable | uses |
+|---|---|---|---|---|
+| Rune-reader | 4 | 30 | **65** lore pieces | 46% |
+| Master of one | 4 | 45 | **100** (`MAX_LEVEL`) | 45% |
+| Ørlǫg-rich | 4 | 25 | **42** ørlǫg tiers | 60% |
+| Way-wise | **3** | 18 | **28** recipes | 64% |
+| Hall-raiser | **3** | 6 | **9** hall levels | 67% |
+| Broad-handed | **3** | 9 | **11** crafts | 82% |
+| Well-girt | 4 | 40 | 40 slots (you + 9 crew) | 100% ✔ |
+
+Only Well-girt actually runs to the end. **Master of one** tops out at level 45 while a
+craft can reach 100 — so the whole back half of levelling earns no mark at all. **Rune-
+reader** stops at 30 of 65 pieces of lore, and three marks have only **three** tiers where
+every other mark has four.
+
+The rest (timber cut, food, silver, voyages, and so on) are open-ended totals with no
+ceiling to measure against — they may still want a fifth tier, but nothing says they are
+short the way these do.
+
+**Worth deciding first: what "fully developed" means.**
+
+- **Reach the ceiling** — the top tier lands on the real maximum (best 100, ways 28,
+  broad 11, hall 9, lore 65, ørlǫg 42). Clean, but a top tier that demands *everything*
+  is a different kind of goal from one that demands a lot.
+- **Land just short** — top tier at ~80–90% of the ceiling, as most sit now, but the
+  short ones brought up to match.
+- **Uniform tier count** — the three-tier marks (Way-wise, Hall-raiser, Broad-handed)
+  gain a fourth so every mark has the same shape.
+
+Also worth checking when this is done: `markReady`/`claimMark` and the ørlǫg they pay,
+so added tiers do not quietly change the ørlǫg economy that #33–#37 also touch.
+
+---
+
 *Add new bugs above this line as they come in.*
