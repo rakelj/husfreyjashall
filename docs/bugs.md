@@ -596,6 +596,44 @@ button all read it. The notice names each want and reddens what is short:
 tracked in it, so the notice would have sat stale until something unrelated forced a
 redraw.
 
+## 32. ✅ The Sea dot was drawn and wiped again in the same breath (real cause of #31)
+
+**Reported:** *"Still no dot for unloading"* — on v0.17.29, with a Longship plainly
+**Home from the skerries** and its *unload her* button showing. #31's contrast fix was
+real but was not the whole story.
+
+**Cause — two writers to one element, one of them behind the cache.** `#ts` was written
+from both:
+
+```js
+// draw(), direct — never touches set()'s cache
+if(seaBtn) seaBtn.innerHTML = s.markets.length ? `Sea <span …>M</span>` : "Sea";
+// paint(), through set(), which skips the write when _c[id] matches
+set("ts","Sea"+(s.trips.some(t=>t.home)?'<span class="dot"></span>':…));
+```
+
+`set` returns early when its cache says the value is unchanged — but the cache only knows
+what `set` itself wrote. So the moment a ship made the sand:
+
+| frame | what happened |
+|---|---|
+| she arrives | `set` writes the dot, caches it |
+| next frame | `draw` overwrites with `Sea M` · `set` sees cache == dot, **writes nothing** |
+
+The dot appeared for a single frame and was then gone for good — with the kaupstefna mark
+also flickering against it. Same shape as #29: one thing answering to two owners.
+
+**Fix (v0.17.30).** The Sea tab's whole label is written in **one place**, in `paint()`.
+`draw()`'s direct write is gone; the mark is folded into the same `set` call.
+
+**Also, as asked:** the kaupstefna **M sits on its own line above the name** rather than
+beside it, and it is darkened on the active tab like the dot — it was gold-on-gold too.
+
+**Verified** by replaying frames against both builds: on shipped `main` the dot survives
+one frame then is wiped; with the fix the mark and the dot hold together across frames.
+All dot conditions re-checked — home (including one of several), home in preference to
+the rust stalled dot, and nothing while all are at sea.
+
 ## 31. ✅ The tab dot is invisible on the tab you are on
 
 **Reported alongside:** *"add a dot to the sea tab when a ship is back and ready for
