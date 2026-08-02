@@ -655,7 +655,7 @@ clears the moment she is unloaded.
 
 ---
 
-## 33. ☐ OPEN — Counsel should start at 1, and each task band wants its own line
+## 33. 🔴 Counsel should start at 1, and each task band wants its own line
 
 **Rakel:** *"Ørlǫg line for counsel should start at 1 and there should be similar lines for
 the other task types."*
@@ -682,7 +682,7 @@ errand at a time (a real slowdown — `BAND.base` is what a fresh hall gets, and
 reseeds `ch` from `bandCap`), or whether the *line* starts at 1 while the base stays
 where it is. These give very different early games.
 
-## 34. ☐ OPEN — Charts are lost at every reckoning and no line carries them
+## 34. 🔴 Charts are lost at every reckoning and no line carries them
 
 **Rakel:** *"Charts must be included in ørlǫg lines and prestige carry overs."*
 
@@ -705,7 +705,7 @@ reachable again.
 better — `hoard` and `hearth` both work in tiers — but all-or-nothing is what stops the
 map being re-sailed from scratch each age.
 
-## 35. ☐ OPEN — Market: refresh rules, the ¾ sell rule, and dumping rares at the first stall
+## 35. ✅ Market: refresh rules, the ¾ sell rule, and dumping rares at the first stall
 
 **Rakel:** *"Sell offers should be added, buy offers refreshed. The 3/4 rule needs
 rethinking. You can still sell all rare materials at the first market."*
@@ -740,9 +740,38 @@ how many times you press it, and nothing ties it to the market's size — so the
 hoard can go at the **home** kaupstefna, one tap at a time, defeating the far-markets-pay-
 better rule that `rarePrice` implements (`marketWealth(p)` × spread by `reach`).
 
+**Fixed (v0.17.31), all three — see #39 for the time cap they were done alongside.**
+
+**(a) Buys restocked, sells gathered but bounded.** Re-landing keeps the sell stalls and
+replaces the buy stalls: `keptSells.slice(-room).concat(offers)`. Sells still accumulate
+as intended, but only to `sellCap(p)` — `(reach===0?2:3+reach)*4`, so **8** at the coast,
+16 west/north, 20 east. The oldest go first: they are stalest, and priced to stores you
+may no longer hold.
+
+**(b) A stall buys what its purse allows.** The ¾ rule is gone. Each sell offer now draws
+on `purse = 220 · wealth · (0.75 + rnd·0.6)` silver and takes `min(what you hold,
+purse/WORTH[k])`, floor 5. The market is the measure, not your barn — the sink no longer
+grows with the surplus it exists to drain. Cheap bulk still moves in quantity (a coast
+stall takes ~600 timber), and a rich water absorbs far more (Miklagarðr will take ~2000
+food in one offer).
+
+**(c) A market's appetite for rare things is finite.** `rareCap(p)` — **3** at the coast,
+6 west/north, **9** at Miklagarðr — held on the market as `rareLeft`, decremented by
+`sellRare`, and topped up by one (to the cap) on each fresh landing. The panel says how
+many more it will take and greys the button at zero. Saves made before this build have no
+`rareLeft`; `rareLeftOf` treats a missing value as a full cap, so they behave as new ones.
+
+This makes carrying rares outward the point rather than a rounding error — the same visit
+with silk in hand is worth **504 silver at the Coastal run and 6,048 at Miklagarðr**, a
+twelvefold difference from price and appetite together.
+
+The home bulk-ivory offer from #8 (≤15 ivory at 50 silver each) is **kept** — it is a
+deliberate, already-capped sink for the northern water's glut, and separate from the
+one-at-a-time `sellRare` path this closes.
+
 ---
 
-## 36. ☐ OPEN — The Work panel reorders itself after a reckoning
+## 36. 🔴 The Work panel reorders itself after a reckoning
 
 **Rakel:** *"After prestiging the skills are in a different order."*
 
@@ -784,7 +813,7 @@ The first keeps both properties; the second is less code.
 
 ---
 
-## 37. ☐ OPEN — More than one of your people should come through the fire, eventually
+## 37. 🔴 More than one of your people should come through the fire, eventually
 
 **Rakel:** *"At some point you should be allowed to bring more crew after prestiging."*
 
@@ -820,7 +849,7 @@ come through unless that rises too — which may be exactly the trade you want.
 
 ---
 
-## 38. ☐ OPEN — Mark tiers stop well short of what the game can reach
+## 38. 🔴 Mark tiers stop well short of what the game can reach
 
 **Rakel:** *"Mark tiers must be fully developed, some stop very early."*
 
@@ -861,7 +890,7 @@ so added tiers do not quietly change the ørlǫg economy that #33–#37 also tou
 
 ---
 
-## 39. ☐ OPEN — A market never closes once you have a few ships, and its offers pile up
+## 39. ✅ A market never closes once you have a few ships, and its offers pile up
 
 **Rakel:** *"Markets need a time cap. With multiple ships at lower sailing times and auto
 sail the market stays up forever. Maybe it helps with buy offers refreshing, right now I
@@ -907,6 +936,28 @@ offers and ~32 sell offers an hour, for ever**. Over 50 buy offers is exactly on
 landing there. A hard cap means a busy port shuts under you mid-trade; a cap on *offers*
 with uncapped time keeps it open but bounded. The second is gentler and probably what the
 "never wipe what is there" rule from #8 was reaching for.
+
+**Fixed (v0.17.31) — both, since capping one without the other only changes which list
+grows.** Rakel's call: reduce the time a fresh landing adds while the market is already
+open, rather than let it bank hours.
+
+**Time.** A landing now adds `add · max(0.2, 1 − left/cap)` and is clamped to
+`marketCapMs(p) = marketMins(p) · 3` — three markets' worth. The top-up shrinks as the
+market fills, so it approaches the ceiling and settles rather than climbing. It still
+never closes under you while you keep landing; it simply stops banking. At the Coastal
+run, repeated landings:
+
+| landing | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| open for | 6.0m | 10.0m | 12.7m | 14.4m | 15.6m | 16.8m | 18.0m | 18.0m |
+| offers | 5 | 8 | 10 | 10 | 10 | 10 | 10 | 10 |
+
+The log says so plainly when it is full: *"Fresh stalls at the kaupstefna at the Coastal
+run — it can stand no longer than it does."*
+
+**Offers.** Bounded by #35(a) above — buys restocked rather than doubled, sells capped at
+`sellCap(p)`. The pile-up that produced **over 50 buy offers** now settles at **2 buy and
+8 sell** at a home port, and cannot exceed it however long the market stands.
 
 ---
 
