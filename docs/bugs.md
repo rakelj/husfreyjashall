@@ -521,4 +521,100 @@ this.
 
 ---
 
+## 29. ✅ Nothing could be sheltered through the fire — every "take" was swallowed
+
+**Reported:** *"Cant take a crew when prestiging."* Screenshot showed the reckoning at
+`0 of 1 chosen` with the take buttons doing nothing.
+
+**Cause.** `data-pick` was doing **two unrelated jobs**:
+
+| emitter | meaning |
+|---|---|
+| slot picker's **done** button (`data-pick=""`) | close `S.pick` — a cursor for which slot's picker is open |
+| shelter list's **take/keep** (`data-pick="c0"`) | toggle membership of `s.picks` — the list carried through the fire |
+
+The tap dispatcher tested them in this order:
+
+```js
+else if(d.pick!==undefined){ S.pick=null; … }   // line 2541 — matches BOTH
+…
+else if(d.pick)togglePick(d.pick);              // line 2570 — unreachable
+```
+
+`!==undefined` is true for `"c0"` as much as for `""`, so the first branch caught every
+shelter tap, set an already-null cursor to null, redrew, and returned. `togglePick` was
+**dead code**. Not a crew problem — items, lore and ways were equally unpickable, so a
+reckoning could only ever be taken with nothing saved.
+
+The two state fields are `S.pick` (a cursor) and `s.picks` (a list) — near-identical
+names for unrelated things, which is how one attribute came to serve both.
+
+**Fix (v0.17.28).** The picker's done button now emits `data-pickoff`; the branch tests
+`d.pickoff`. `data-pick` means sheltering and nothing else. CSS tap-target rule updated
+so the done button keeps its pointer affordance.
+
+**Verified:**
+- Reproduced against shipped `main` first — all four shelter taps landed on
+  `d.pick!==undefined`; after the fix each reaches its intended branch.
+- Audited every `data-*` the markup emits against the dispatcher: **no attribute name is
+  tested twice**, and nothing emitted goes undispatched.
+- The selection rules themselves were never broken, only unreachable — confirmed once
+  routed: one person max ("Only one of your people can be hidden in the tree"), the
+  overall cap from age + Long memory, and tapping an entry again deselects it.
+
+---
+
+## 30. ✅ "Mend her" offered itself, then refused — the notice counted only the hull
+
+**Reported:** *"Somethings wrong with mending ships, sailcloths."* Screenshot: *"Mending
+wants 2 hull — you have 111"* with a live **mend her** button, which on tapping only
+answered *"4 sailcloth to mend her"* — and Sailcloth was 0.
+
+**Cause.** Mending wants three things:
+
+```js
+const want=Math.min(8,Math.ceil((100-sh.cond)/5));      // hull
+const cloth=Math.max(2,Math.round(want*2.2));            // sailcloth
+const stone=want>=6?1:0;                                 // Eidsborg hone
+```
+
+The panel worked the hull out **a second time, on its own**, and knew nothing of the
+other two — so the notice named only the hull and the button's `disabled` test was
+`s.res.hull>=want`. Everything the hall was short of only surfaced as a toast *after* the
+tap. Exactly the "two heuristics answering the same question" trap in handover §3.
+
+**Fix (v0.17.29).** One `mendNeed(sh)` returns all three; `mendShip`, the notice and the
+button all read it. The notice names each want and reddens what is short:
+
+| her state | reads | button |
+|---|---|---|
+| 91/100, no sailcloth | Mending wants 2 hull · **4 sailcloth — you have 0** | disabled |
+| 60/100, no sailcloth | Mending wants 8 hull · **18 sailcloth — you have 0** · 1 eidsborg hone | disabled |
+| 60/100, stocked | Mending wants 8 hull · 18 sailcloth · 1 eidsborg hone | enabled |
+
+`stateSig` also now carries what each ship lacks — neither sailcloth nor the hone was
+tracked in it, so the notice would have sat stale until something unrelated forced a
+redraw.
+
+## 31. ✅ The tab dot is invisible on the tab you are on
+
+**Reported alongside:** *"add a dot to the sea tab when a ship is back and ready for
+unloading."*
+
+**Already there, and correct** — `paint()` sets a gold dot on Sea whenever
+`s.trips.some(t=>t.home)`. Verified against the real expression: gold dot when a ship is
+home (including when one of several is home, and in preference to the rust stalled-ship
+dot), nothing while all are at sea.
+
+**The real defect** is that `.dot` is gold and `#tabs button.on` is *also* gold — so the
+dot cannot be seen on whichever tab is open. That hides it on every tab, not just Sea.
+Fixed by darkening the dot on the active tab. The rust variant sets its colour inline, so
+it was always visible and is unaffected.
+
+Two other reasons a home ship might show no dot, both working as intended: **a hand on
+the tiller** lands her automatically (`land(ti)` the same tick she arrives), and the dot
+clears the moment she is unloaded.
+
+---
+
 *Add new bugs above this line as they come in.*

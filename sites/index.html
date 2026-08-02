@@ -27,7 +27,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* Safari on iOS will not deliver a click from a plain div unless it looks
    clickable to it. Every tap target says so explicitly. */
-[data-slot],[data-sect],[data-flow],[data-un],[data-act],[data-pick]{
+[data-slot],[data-sect],[data-flow],[data-un],[data-act],[data-pick],[data-pickoff]{
  cursor:pointer;touch-action:manipulation}
 html,body{margin:0;padding:0;overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%}
 body{background:var(--ink);color:var(--bone);font-family:var(--serif);font-size:14.5px;line-height:1.45;
@@ -83,6 +83,8 @@ button.swap.arm{color:var(--gold);border-bottom-color:var(--gold)}
 #tabs button{flex:1;padding:8px 1px;font-size:11.5px;min-height:48px;letter-spacing:.03em}
 #tabs button.on{background:var(--gold);color:#15110d;border-top-color:#f0bd5e;font-weight:600}
 #tabs button .dot{display:inline-block;width:6px;height:6px;border-radius:0;transform:rotate(45deg);background:var(--gold);vertical-align:middle;margin-left:3px}
+/* the tab you are on is gold itself — a gold dot on it cannot be seen at all */
+#tabs button.on .dot{background:#15110d}
 main{padding:12px calc(14px + env(safe-area-inset-right,0px)) 60px calc(14px + env(safe-area-inset-left,0px));max-width:640px;margin:0 auto}
 /* a plank, with the groove cut above it and the lamplight on its upper edge */
 .card{background:var(--p1);border:0;border-top:1px solid var(--edge);border-radius:0;
@@ -580,10 +582,11 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.26";
-const BUILT="01 Aug 2026 · 21:35 UTC";
-// one line, updated each build, so it is obvious at a glance when a new version has landed
-const NOTES="Fortune is reworked: each charm in the hall is its own chance, so another always helps and it never quite reaches certainty. It sways common finds most, the rarest least — and what a hand turns up at her own work follows her own charm.";
+const BUILD="v0.17.29";
+const BUILT="02 Aug 2026 · 10:39 UTC";
+// one line, updated each build, so it is obvious at a glance when a new version has landed.
+// BUILD, BUILT and NOTES move together — a stamp without the other two is a lie.
+const NOTES="What comes through the fire can be chosen again — the take buttons answered to nothing, so no one and nothing could be sheltered. Mending now names the sailcloth and the hone it wants, not the hull alone, and will not offer itself when the hall is short. A tool no longer waits on a chance find you may never have made, and chance finds say where they truly came from.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -1616,9 +1619,15 @@ function setTable(quiet){const s=S;
  log(`A pot on the board — every hand works ${Math.round(s.tableLift*100)}% harder for ${dur(s.table)}.`,"good");
  if(!quiet)toast("The table is set");
  maybeDraw();}
+/* What mending her wants — one answer, read by the notice, the button and the mending
+   itself. It used to be worked out twice: the panel counted only the hull and so lit a
+   button that then refused, telling you about the sailcloth only after you had tapped. */
+function mendNeed(sh){ const want=Math.min(8,Math.ceil((100-sh.cond)/5));
+ return {hull:want, sailcloth:Math.max(2,Math.round(want*2.2)), whetstone:want>=6?1:0}; }
+const mendShort=(s,sh)=>Object.entries(mendNeed(sh))
+  .filter(([k,v])=>v>0&&(s.res[k]||0)<v).map(([k])=>k);
 function mendShip(s,fi,quiet){ const sh=s.fleet[fi]; if(!sh)return false;
- const want=Math.min(8,Math.ceil((100-sh.cond)/5));
- const cloth=Math.max(2,Math.round(want*2.2)), stone=want>=6?1:0;
+ const need=mendNeed(sh), want=need.hull, cloth=need.sailcloth, stone=need.whetstone;
  if(want<=0){if(!quiet)toast("She is sound");return false;}
  if(s.res.hull<want){if(!quiet)toast(`Wants ${want} hull — rivet more strakes`);return false;}
  if(s.res.sailcloth<cloth){if(!quiet)toast(cloth+" sailcloth to mend her");return false;}
@@ -2063,10 +2072,14 @@ function view_sea(s){
     } else if(t){ const p=portDef(t.dest);
      body=`<div class="sub">On ${p.en.toLowerCase()} · <span id="vt${i}">${dur(t.left)}</span> to the sand</div>
       <div class="bar sm" style="margin-top:4px"><i id="vb${i}" style="width:${pct(t.tot-t.left,t.tot)}%;background:var(--frost)"></i></div>`;
-    } else { const want=Math.min(8,Math.ceil((100-sh.cond)/5));
+    } else { const need=mendNeed(sh), short=mendShort(s,sh);
+     // name everything she wants, and redden what is not in the hall
+     const wants=Object.entries(need).filter(([,v])=>v>0).map(([k,v])=>{
+      const lack=short.includes(k);
+      return `<span style="${lack?"color:var(--rust)":""}">${v} ${resName(k)}${lack?` — you have ${f(s.res[k]||0)}`:""}</span>`;}).join(" · ");
      body=`<div class="bar sm"><i id="cnd${i}" style="width:${sh.cond}%;background:${sh.cond<35?"var(--rust)":"var(--patina)"}"></i></div>
-      <div class="sub" style="margin-top:5px">${sh.cond>=99?"Sound and tarred, on the sand.":`Mending wants ${want} hull — you have ${f(s.res.hull)}.`}</div>`+
-      (sh.cond<99?`<button data-mend="${i}" style="margin-top:6px;width:100%" ${s.res.hull>=want?"":"disabled"}>mend her</button>`:"")+
+      <div class="sub" style="margin-top:5px">${sh.cond>=99?"Sound and tarred, on the sand.":`Mending wants ${wants}.`}</div>`+
+      (sh.cond<99?`<button data-mend="${i}" style="margin-top:6px;width:100%" ${short.length?"disabled":""}>mend her</button>`:"")+
       `<button data-scrap="${i}" style="margin-top:5px;width:100%;background:transparent;box-shadow:none;min-height:36px;font-size:11px;border:0;border-top:1px dashed ${scrapArm===i?"var(--rust)":"var(--edge)"};color:${scrapArm===i?"var(--rust)":"var(--dim)"}">${scrapArm===i?"sure? — break her up":"break her up"}${scrapHull(sh)>0?` · +${scrapHull(sh)} hull`:""}</button>`;
     }
     const perks=[d.cargo>1?`${Math.round((d.cargo-1)*100)}% more in the hold`:"",d.speed>1?`${Math.round((d.speed-1)*100)}% quicker`:"",d.wear<1?`wears ${Math.round((1-d.wear)*100)}% slower`:""].filter(Boolean).join(" · ");
@@ -2449,7 +2462,9 @@ function paint(){
 /* structure is rebuilt only when something structural actually changed */
 function stateSig(){const s=S;
  return [tab,s.unlocked.join(""),s.crew.length,s.items.length,s.known.join(""),s.intro,s.hall,
-  s.fleet.map(sh=>sh.tier+Math.round(sh.cond/5)).join(",")+"|"+s.trips.map(t=>t.ship+t.dest+(t.home?"H":"")).join(",")+"|"+Object.keys(s.opened||{}).length+"|"+s.markets.map(mk=>mk.port+mk.offers.map(o=>o.kind+o.res+o.qty).join("")).join(";"),s.act,
+  // what each ship still lacks rides in the signature, so the mend notice and its
+  // button follow the sailcloth and the hone — neither of which is tracked elsewhere
+  s.fleet.map(sh=>sh.tier+Math.round(sh.cond/5)+mendShort(s,sh).map(k=>k[0]).join("")).join(",")+"|"+s.trips.map(t=>t.ship+t.dest+(t.home?"H":"")).join(",")+"|"+Object.keys(s.opened||{}).length+"|"+s.markets.map(mk=>mk.port+mk.offers.map(o=>o.kind+o.res+o.qty).join("")).join(";"),s.act,
   s.crew.map(c=>c.sk+c.act+c.capL+cL(c,c.sk)+Object.values(c.eq).map(x=>x?x.rec:"-").join("")).join("/"),
   Object.values(s.eq).map(x=>x?x.rec:"-").join(""),
   Object.keys(SK).map(k=>myL(s,k)).join(".")+"/"+softCap(s),
@@ -2520,7 +2535,7 @@ function slotPicker(s,who){
  const bestId=who!=="me"&&fits.length&&recVal(fits[0])>wornVal?fits[0].id:null;
  return `<div class="card" style="margin-top:7px;border-color:var(--gold)">
   <div class="hd"><span class="nm">${SLOTS[p.slot]} for ${who==="me"?"you":s.crew[who].name}</span>
-   <span class="lv"><button data-pick="" style="min-height:34px;padding:5px 11px">done</button></span></div>
+   <span class="lv"><button data-pickoff="" style="min-height:34px;padding:5px 11px">done</button></span></div>
   ${wornId?`<div class="row"><span>${REC.find(x=>x.id===wornId).en} <span class="tag" style="border-color:var(--patina);color:var(--patina)">worn</span></span>
     <button class="swap" data-unslot="${p.slot}" data-w="${who}">take it off</button></div>`:""}
   ${fits.length?fits.map(r=>`<div class="row"><span>${r.en} <span class="mono sub">×${own(s,r.id)}</span>${r.id===bestId?` <span class="tag" style="border-color:var(--gold);color:var(--gold)">best</span>`:""}
@@ -2537,7 +2552,10 @@ function fire(t){
  else if(d.sell)sell(d.sell);
  else if(d.seek)seek();
  else if(d.slot!==undefined){ S.pick=(S.pick&&S.pick.who===d.w&&S.pick.slot===d.slot)?null:{who:d.w,slot:d.slot}; lastSig=""; maybeDraw(); }
- else if(d.pick!==undefined){ S.pick=null; lastSig=""; maybeDraw(); }
+ // closing the slot picker (S.pick, a cursor) — not to be confused with sheltering
+ // something through the fire (s.picks, a list). Both once answered to data-pick,
+ // and this branch, coming first, swallowed every tap meant for the other.
+ else if(d.pickoff!==undefined){ S.pick=null; lastSig=""; maybeDraw(); }
  else if(d.unslot){ unequip(d.w==="me"?"me":+d.w,d.unslot); lastSig=""; maybeDraw(); }
  else if(d.rest!==undefined){ const c=S.crew[+d.rest]; if(c){ c.rest=!c.rest;
    log(`${c.name} is ${c.rest?"set down":"back at the "+ACT[c.act].en.toLowerCase()}.`,"b"); lastSig=""; maybeDraw(); } }
