@@ -521,4 +521,47 @@ this.
 
 ---
 
+## 29. ✅ Nothing could be sheltered through the fire — every "take" was swallowed
+
+**Reported:** *"Cant take a crew when prestiging."* Screenshot showed the reckoning at
+`0 of 1 chosen` with the take buttons doing nothing.
+
+**Cause.** `data-pick` was doing **two unrelated jobs**:
+
+| emitter | meaning |
+|---|---|
+| slot picker's **done** button (`data-pick=""`) | close `S.pick` — a cursor for which slot's picker is open |
+| shelter list's **take/keep** (`data-pick="c0"`) | toggle membership of `s.picks` — the list carried through the fire |
+
+The tap dispatcher tested them in this order:
+
+```js
+else if(d.pick!==undefined){ S.pick=null; … }   // line 2541 — matches BOTH
+…
+else if(d.pick)togglePick(d.pick);              // line 2570 — unreachable
+```
+
+`!==undefined` is true for `"c0"` as much as for `""`, so the first branch caught every
+shelter tap, set an already-null cursor to null, redrew, and returned. `togglePick` was
+**dead code**. Not a crew problem — items, lore and ways were equally unpickable, so a
+reckoning could only ever be taken with nothing saved.
+
+The two state fields are `S.pick` (a cursor) and `s.picks` (a list) — near-identical
+names for unrelated things, which is how one attribute came to serve both.
+
+**Fix (v0.17.28).** The picker's done button now emits `data-pickoff`; the branch tests
+`d.pickoff`. `data-pick` means sheltering and nothing else. CSS tap-target rule updated
+so the done button keeps its pointer affordance.
+
+**Verified:**
+- Reproduced against shipped `main` first — all four shelter taps landed on
+  `d.pick!==undefined`; after the fix each reaches its intended branch.
+- Audited every `data-*` the markup emits against the dispatcher: **no attribute name is
+  tested twice**, and nothing emitted goes undispatched.
+- The selection rules themselves were never broken, only unreachable — confirmed once
+  routed: one person max ("Only one of your people can be hidden in the tree"), the
+  overall cap from age + Long memory, and tapping an entry again deselects it.
+
+---
+
 *Add new bugs above this line as they come in.*

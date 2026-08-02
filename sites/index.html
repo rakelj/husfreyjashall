@@ -27,7 +27,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* Safari on iOS will not deliver a click from a plain div unless it looks
    clickable to it. Every tap target says so explicitly. */
-[data-slot],[data-sect],[data-flow],[data-un],[data-act],[data-pick]{
+[data-slot],[data-sect],[data-flow],[data-un],[data-act],[data-pick],[data-pickoff]{
  cursor:pointer;touch-action:manipulation}
 html,body{margin:0;padding:0;overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%}
 body{background:var(--ink);color:var(--bone);font-family:var(--serif);font-size:14.5px;line-height:1.45;
@@ -580,11 +580,11 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.27";
-const BUILT="02 Aug 2026 · 10:25 UTC";
+const BUILD="v0.17.28";
+const BUILT="02 Aug 2026 · 10:31 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed.
 // BUILD, BUILT and NOTES move together — a stamp without the other two is a lie.
-const NOTES="A tool no longer waits on a chance find you may never have made: a shepherd of fifteen works out her comb whether or not horn ever fell to her. Chance finds now say where they truly came from, and a hand's gear is fitted in her own slot rather than pressed on her by a shortcut.";
+const NOTES="What comes through the fire can be chosen again — the take buttons answered to nothing, so no one and nothing could be sheltered. Besides that: a tool no longer waits on a chance find you may never have made, chance finds say where they truly came from, and a hand's gear is fitted in her own slot rather than pressed on her by a shortcut.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2521,7 +2521,7 @@ function slotPicker(s,who){
  const bestId=who!=="me"&&fits.length&&recVal(fits[0])>wornVal?fits[0].id:null;
  return `<div class="card" style="margin-top:7px;border-color:var(--gold)">
   <div class="hd"><span class="nm">${SLOTS[p.slot]} for ${who==="me"?"you":s.crew[who].name}</span>
-   <span class="lv"><button data-pick="" style="min-height:34px;padding:5px 11px">done</button></span></div>
+   <span class="lv"><button data-pickoff="" style="min-height:34px;padding:5px 11px">done</button></span></div>
   ${wornId?`<div class="row"><span>${REC.find(x=>x.id===wornId).en} <span class="tag" style="border-color:var(--patina);color:var(--patina)">worn</span></span>
     <button class="swap" data-unslot="${p.slot}" data-w="${who}">take it off</button></div>`:""}
   ${fits.length?fits.map(r=>`<div class="row"><span>${r.en} <span class="mono sub">×${own(s,r.id)}</span>${r.id===bestId?` <span class="tag" style="border-color:var(--gold);color:var(--gold)">best</span>`:""}
@@ -2538,7 +2538,10 @@ function fire(t){
  else if(d.sell)sell(d.sell);
  else if(d.seek)seek();
  else if(d.slot!==undefined){ S.pick=(S.pick&&S.pick.who===d.w&&S.pick.slot===d.slot)?null:{who:d.w,slot:d.slot}; lastSig=""; maybeDraw(); }
- else if(d.pick!==undefined){ S.pick=null; lastSig=""; maybeDraw(); }
+ // closing the slot picker (S.pick, a cursor) — not to be confused with sheltering
+ // something through the fire (s.picks, a list). Both once answered to data-pick,
+ // and this branch, coming first, swallowed every tap meant for the other.
+ else if(d.pickoff!==undefined){ S.pick=null; lastSig=""; maybeDraw(); }
  else if(d.unslot){ unequip(d.w==="me"?"me":+d.w,d.unslot); lastSig=""; maybeDraw(); }
  else if(d.rest!==undefined){ const c=S.crew[+d.rest]; if(c){ c.rest=!c.rest;
    log(`${c.name} is ${c.rest?"set down":"back at the "+ACT[c.act].en.toLowerCase()}.`,"b"); lastSig=""; maybeDraw(); } }
