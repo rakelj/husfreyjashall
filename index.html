@@ -83,8 +83,11 @@ button.swap.arm{color:var(--gold);border-bottom-color:var(--gold)}
 #tabs button{flex:1;padding:8px 1px;font-size:11.5px;min-height:48px;letter-spacing:.03em}
 #tabs button.on{background:var(--gold);color:#15110d;border-top-color:#f0bd5e;font-weight:600}
 #tabs button .dot{display:inline-block;width:6px;height:6px;border-radius:0;transform:rotate(45deg);background:var(--gold);vertical-align:middle;margin-left:3px}
-/* the tab you are on is gold itself — a gold dot on it cannot be seen at all */
+/* the tab you are on is gold itself — a gold dot or mark on it cannot be seen at all */
 #tabs button.on .dot{background:#15110d}
+#tabs button .mk{display:block;font-size:8.5px;line-height:1;letter-spacing:.1em;
+ color:var(--gold);margin-bottom:2px}
+#tabs button.on .mk{color:#15110d}
 main{padding:12px calc(14px + env(safe-area-inset-right,0px)) 60px calc(14px + env(safe-area-inset-left,0px));max-width:640px;margin:0 auto}
 /* a plank, with the groove cut above it and the lamplight on its upper edge */
 .card{background:var(--p1);border:0;border-top:1px solid var(--edge);border-radius:0;
@@ -582,11 +585,11 @@ const RAG=[
  {t:s=>`Reach level ${ragNeed(s).lv} in a skill`, ok:s=>Object.keys(SK).some(k=>myL(s,k)>=ragNeed(s).lv), now:s=>`best ${Math.max(...Object.keys(SK).map(k=>myL(s,k)))}`}
 ];
 /* ---------------- state ---------------- */
-const BUILD="v0.17.29";
-const BUILT="02 Aug 2026 · 10:39 UTC";
+const BUILD="v0.17.30";
+const BUILT="02 Aug 2026 · 10:47 UTC";
 // one line, updated each build, so it is obvious at a glance when a new version has landed.
 // BUILD, BUILT and NOTES move together — a stamp without the other two is a lie.
-const NOTES="What comes through the fire can be chosen again — the take buttons answered to nothing, so no one and nothing could be sheltered. Mending now names the sailcloth and the hone it wants, not the hull alone, and will not offer itself when the hall is short. A tool no longer waits on a chance find you may never have made, and chance finds say where they truly came from.";
+const NOTES="The Sea tab now shows a dot when a ship is home and wanting unloading — it had been drawn and then wiped again in the same breath. The kaupstefna mark sits on its own line above the name, and neither it nor any dot is lost against the tab you are standing on.";
 const MAKING=["smith","weave","keep","ship","sail"];
 /* Every mouth in the hall wants feeding, and a strong hand eats more than a weak one —
    so the share of the hall that must forage stays about the same however good you get.
@@ -2380,8 +2383,9 @@ function draw(){
    return `<span class="it ${cls}" data-flow="${k}"><b>${k[0].toUpperCase()+k.slice(1)} </b>${nfm(s.res[k])}<span class="ar"> ${full?"■":ar}</span></span>`;}).join(""));
  const iq=INTRO[s.intro];
  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===tab));
- const seaBtn=document.getElementById("ts");   // a mark on the Sea tab while a kaupstefna is open
- if(seaBtn) seaBtn.innerHTML=s.markets.length?`Sea <span style="color:var(--gold)">M</span>`:"Sea";
+ // the Sea tab's whole label — kaupstefna mark and dot alike — is written in one place,
+ // in paint(). It used to have its innerHTML set directly from here, which went behind
+ // set()'s cache: the mark wiped the dot, and set() then believed it had already drawn it.
  let h="";
  const fn=VIEWS[tab]; if(fn) h+=fn(s);
  set("view",h);
@@ -2426,7 +2430,9 @@ function paint(){
  set("tq","Tasks"+(waiting?'<span class="dot"></span>':""));
  set("tl","Lore"+((s.studies||[]).some(x=>x.ready)?'<span class="dot"></span>':""));
  const stalled=TIER(s,"tiller")&&autoOn(s,"tiller")&&s.fleet.some((sh,i)=>!tripOf(s,i)&&sh.last);
- set("ts","Sea"+(s.trips.some(t=>t.home)?'<span class="dot"></span>'
+ // a kaupstefna is open — its mark sits on its own line above the name
+ const kaup=s.markets.length?'<span class="mk">M</span>':"";
+ set("ts",kaup+"Sea"+(s.trips.some(t=>t.home)?'<span class="dot"></span>'
    :stalled?'<span class="dot" style="background:var(--rust)"></span>':""));
  const stale=canSave&&(!s.kept||Date.now()-s.kept>60*60000)&&s.t>45*60000;
  const hallReady=(()=>{const nx=HALL[s.hall+1];if(!nx)return false;
